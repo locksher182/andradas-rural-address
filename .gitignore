@@ -1,0 +1,30 @@
+
+# Build Results
+[Bb]in/
+[Oo]bj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+
+# Logs
+*.log
+*.txt
+!important.txt
+!documentation.txt
+
+# OS generated files
+Thumbs.db
+.DS_Store
+
+# User specific content
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Publish
+publish_web/

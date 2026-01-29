@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RuralAddress.Mobile.ViewModels"
+             x:Class="RuralAddress.Mobile.Views.LoginPage"
+             Title="Login Morador">
+
+    
+    <ScrollView>
+        <VerticalStackLayout Spacing="25" Padding="30" VerticalOptions="Center">
+            
+            <Image Source="dotnet_bot.png" HeightRequest="120" HorizontalOptions="Center" />
+            
+            <Label Text="Rural Address" FontSize="28" HorizontalOptions="Center" TextColor="#2c3e50" FontAttributes="Bold" />
+            <Label Text="Acesso do Morador" FontSize="16" HorizontalOptions="Center" TextColor="#7f8c8d" />
+
+            <VerticalStackLayout Spacing="5">
+                <Label Text="CPF (apenas números)" TextColor="Gray" FontSize="12" />
+                <Entry Placeholder="000.000.000-00" Text="{Binding Cpf}" Keyboard="Numeric" BackgroundColor="White" TextColor="Black" HeightRequest="50" />
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="5">
+                <Label Text="Senha" TextColor="Gray" FontSize="12" />
+                <Entry Placeholder="Senha (Ex: DDMMAAAA)" Text="{Binding Senha}" IsPassword="True" BackgroundColor="White" TextColor="Black" HeightRequest="50" />
+            </VerticalStackLayout>
+
+            <Button Text="ENTRAR" Command="{Binding LoginCommand}" 
+                    BackgroundColor="#27ae60" TextColor="White" HeightRequest="50" CornerRadius="10" FontAttributes="Bold"
+                    IsEnabled="{Binding IsNotLoading}" />
+
+            <ActivityIndicator IsRunning="{Binding IsLoading}" IsVisible="{Binding IsLoading}" Color="#27ae60" HorizontalOptions="Center" />
+
+            <!-- Error Message & Debug UI -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="Red"
+                   HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center"
+                   IsVisible="{Binding ErrorMessage, Converter={StaticResource StringIsNotNullOrEmptyConverter}}" />
+
+            <!-- Debug / Config Section -->
+            <Button Text="Configurar IP" 
+                    Command="{Binding ToggleDebugCommand}" 
+                    BackgroundColor="Transparent" 
+                    TextColor="Gray" 
+                    FontSize="Small"
+                    Margin="0,20,0,0" />
+
+            <StackLayout IsVisible="{Binding IsDebugVisible}" Padding="10" BackgroundColor="#f0f0f0">
+                <Label Text="Endereço do Servidor (Base URL):" FontSize="Micro" />
+                <Entry Text="{Binding BaseUrl}" Placeholder="http://192.168.x.x:5000" />
+                <Button Text="Atualizar URL" Command="{Binding UpdateUrlCommand}" FontSize="Small" />
+                
+                <Label Text="Detalhes do Erro:" FontSize="Micro" Margin="0,10,0,0" />
+                <Editor Text="{Binding ErrorMessage}" IsReadOnly="True" HeightRequest="100" FontSize="Micro" />
+            </StackLayout>
+
+            <Label Text="{Binding AppVersion}"
+                   TextColor="#bdc3c7"
+                   FontSize="10"
+                   HorizontalOptions="Center"
+                   Margin="0,10,0,0" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

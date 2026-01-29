@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:RuralAddress.Mobile.ViewModels"
+             x:Class="RuralAddress.Mobile.Views.PanicPage"
+             Title="Painel de Emergência">
+
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="Sair" Command="{Binding LogoutCommand}" />
+    </ContentPage.ToolbarItems>
+
+    <Grid RowDefinitions="Auto, *, Auto" Padding="20">
+        
+        <!-- Header / Status -->
+        <VerticalStackLayout Grid.Row="0" Spacing="10">
+            <Label Text="{Binding GpsStatusMessage}" HorizontalOptions="Center" TextColor="Gray" />
+        </VerticalStackLayout>
+
+        <!-- Main Content (Centered) -->
+        <VerticalStackLayout Grid.Row="1" Spacing="20" VerticalOptions="Center">
+            
+            <!-- Default State: Panic Button -->
+            <!-- Visible when Not Alert Active AND Not Counting Down AND Not Error -->
+            <VerticalStackLayout x:Name="PanicButtonLayout">
+                <VerticalStackLayout.Triggers>
+                    <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsAlertActive}" Value="True">
+                        <Setter Property="IsVisible" Value="False" />
+                    </DataTrigger>
+                    <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsCountingDown}" Value="True">
+                        <Setter Property="IsVisible" Value="False" />
+                    </DataTrigger>
+                     <DataTrigger TargetType="VerticalStackLayout" Binding="{Binding IsPanicError}" Value="True">
+                        <Setter Property="IsVisible" Value="False" />
+                    </DataTrigger>
+                </VerticalStackLayout.Triggers>
+
+                <Button Text="SOS" 
+                        FontSize="40" FontAttributes="Bold"
+                        Command="{Binding StartPanicCommand}"
+                        BackgroundColor="#e74c3c" TextColor="White" 
+                        HeightRequest="200" WidthRequest="200" CornerRadius="100"
+                        HorizontalOptions="Center" />
+                <Label Text="Toque para iniciar o alerta" HorizontalOptions="Center" Margin="0,10,0,0" />
+            </VerticalStackLayout>
+
+
+            <!-- Countdown State -->
+            <VerticalStackLayout IsVisible="{Binding IsCountingDown}">
+                <Label Text="{Binding CountdownSeconds, StringFormat='Enviando em {0}s...'}" 
+                       FontSize="30" TextColor="#e74c3c" HorizontalOptions="Center" FontAttributes="Bold" />
+                
+                <Button Text="CANCELAR" Command="{Binding CancelPanicCommand}"
+                        BackgroundColor="Gray" TextColor="White" HeightRequest="60" WidthRequest="200"
+                        HorizontalOptions="Center" Margin="0,20,0,0" />
+            </VerticalStackLayout>
+
+            <!-- Active Alert State (Chat) -->
+            <Grid IsVisible="{Binding IsAlertActive}" RowDefinitions="Auto, *, Auto" HeightRequest="550">
+                 <!-- Emergency Exit Button -->
+                <Button Grid.Row="0" Text="FECHAR APP (Sair de Emergência)" 
+                        Command="{Binding CloseAppCommand}"
+                        BackgroundColor="DarkRed" TextColor="White" 
+                        HorizontalOptions="Center" Margin="0,0,0,10" />
+
+                <CollectionView Grid.Row="1" ItemsSource="{Binding ChatMessages}" Margin="0,0,0,10">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame Padding="10" Margin="5" BackgroundColor="#ecf0f1" BorderColor="Transparent">
+                                <Label Text="{Binding DisplayText}" TextColor="Black" />
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+                
+                <HorizontalStackLayout Grid.Row="2" Spacing="10">
+                    <Entry Placeholder="Mensagem..." 
+                           Text="{Binding NewMessage}" 
+                           HorizontalOptions="FillAndExpand" 
+                           WidthRequest="250"
+                           ReturnType="Send"
+                           ClearButtonVisibility="WhileEditing" />
+                    <Button Text="Enviar" Command="{Binding SendMessageCommand}" />
+                </HorizontalStackLayout>
+            </Grid>
+            
+            <!-- CRITICAL ERROR STATE -->
+            <VerticalStackLayout IsVisible="{Binding IsPanicError}" Spacing="20" Padding="20">
+                <Label Text="ERRO" FontSize="60" TextColor="Red" FontAttributes="Bold" HorizontalOptions="Center" />
+                <Label Text="AJUDA NÃO ENVIADA" FontSize="30" TextColor="Red" FontAttributes="Bold" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                <Label Text="Entre em contato via 153 ou clique abaixo para WhatsApp:" FontSize="18" HorizontalOptions="Center" HorizontalTextAlignment="Center" />
+                
+                <Label Text="(35) 99746-0384" 
+                       FontSize="24" TextColor="Blue" FontAttributes="Bold" TextDecorations="Underline"
+                       HorizontalOptions="Center">
+                    <Label.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding OpenWhatsAppCommand}" />
+                    </Label.GestureRecognizers>
+                </Label>
+                 <Button Text="Tentar Novamente" Command="{Binding StartPanicCommand}" Margin="0,20,0,0" />
+            </VerticalStackLayout>
+
+            <Label Text="{Binding AppVersion}" 
+                   HorizontalOptions="Center" 
+                   TextColor="LightGray" 
+                   FontSize="12"
+                   Margin="0,10,0,0"/>
+
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>
