@@ -1,0 +1,205 @@
+/* Premium Rural Design System */
+:root {
+    /* Color Palette - Emerald & Gold */
+    --primary-color: #059669;
+    /* Emerald 600 */
+    --primary-dark: #047857;
+    /* Emerald 700 */
+    --primary-light: #34d399;
+    /* Emerald 400 */
+    --accent-color: #d97706;
+    /* Amber 600 */
+    --accent-light: #fbbf24;
+    /* Amber 400 */
+
+    /* Neutrals */
+    --bg-body: #f3f4f6;
+    /* Gray 100 */
+    --bg-surface: #ffffff;
+    --text-main: #111827;
+    /* Gray 900 */
+    --text-muted: #6b7280;
+    /* Gray 500 */
+
+    /* Effects */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --blur: blur(12px);
+
+    /* Typography */
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+html,
+body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+/* Typography Enhancements */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--text-main);
+}
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: var(--primary-dark);
+}
+
+/* Premium Buttons */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border: none;
+    box-shadow: var(--shadow-md);
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+}
+
+/* Glassmorphism Cards */
+.card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-md);
+}
+
+.card-header {
+    background: transparent;
+}
+
+/* Layout Overrides */
+.page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+main {
+    flex: 1;
+    padding: 2rem;
+}
+
+.sidebar {
+    background: linear-gradient(180deg, #064e3b 0%, #065f46 100%);
+    color: white;
+}
+
+/* Responsive Sidebar */
+@media (min-width: 641px) {
+    .page {
+        flex-direction: row;
+    }
+
+    .sidebar {
+        width: 250px;
+        height: 100vh;
+        position: sticky;
+        top: 0;
+    }
+}
+
+/* Form Controls */
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+}
+
+/* Fix Focus Outline */
+h1:focus,
+h1:active,
+h1:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* Utility Classes */
+.text-gradient {
+    background: linear-gradient(to right, var(--primary-dark), var(--primary-light));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-section {
+    padding: 4rem 0;
+    text-align: center;
+}
+
+/* Social Share Buttons */
+.btn-icon-square {
+    width: 31px;
+    height: 31px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-whatsapp {
+    background-color: #198754;
+    /* Bootstrap success */
+    border-color: #198754;
+    color: white;
+}
+
+.btn-whatsapp:hover {
+    background-color: #157347;
+    border-color: #146c43;
+    color: white;
+}
+
+.btn-telegram {
+    background-color: #24A1DE;
+    border-color: #24A1DE;
+    color: white;
+}
+
+.btn-telegram:hover {
+
+/* Blazor Error UI - Default Hidden */
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none; /* Critical: Hide by default */
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}

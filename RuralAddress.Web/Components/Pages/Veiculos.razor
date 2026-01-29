@@ -1,0 +1,168 @@
+@page "/veiculos"
+@using RuralAddress.Core.Entities
+@using RuralAddress.Core.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin,Gerente")]
+@inject IVeiculoService VeiculoService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Veículos</PageTitle>
+
+<h1>Veículos Cadastrados</h1>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="position-relative">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input type="text" class="form-control border-start-0 ps-0" 
+                       placeholder="Buscar por placa, modelo..." 
+                       @bind="SearchTerm" @oninput="OnInput" @onkeypress="HandleKeyPress">
+                <button class="btn btn-primary" @onclick="Search">Buscar</button>
+            </div>
+            
+            @if (suggestions.Any())
+            {
+                <ul class="list-group position-absolute w-100 shadow-lg start-0 top-100 mt-1 rounded-3 overflow-hidden" style="z-index: 1000;">
+                    @foreach (var suggestion in suggestions)
+                    {
+                        <li class="list-group-item list-group-item-action cursor-pointer" role="button" @onclick="() => SelectSuggestion(suggestion)">
+                            @suggestion
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</div>
+
+@if (veiculos == null)
+{
+    <p><em>Carregando...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Tipo</th>
+                <th>Modelo</th>
+                <th>Placa</th>
+                <th>Propriedade</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in veiculos)
+            {
+                <tr>
+                    <td>@item.Tipo?.Name</td>
+                    <td>@item.Modelo</td>
+                    <td>@item.Placa</td>
+                    <td>
+                        @if (item.Propriedade != null)
+                        {
+                            <a href="propriedades/editar/@item.PropriedadeId">@item.Propriedade.NomePropriedade</a>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Sem Propriedade</span>
+                        }
+                    </td>
+                    <td>
+                        @if (item.PropriedadeId > 0)
+                        {
+                            <a href="propriedades/editar/@item.PropriedadeId" class="btn btn-secondary btn-sm">Ver na Propriedade</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Veiculo>? veiculos;
+    private string SearchTerm { get; set; } = "";
+    private List<string> suggestions = new();
+    private System.Timers.Timer? _debounceTimer;
+
+    [SupplyParameterFromQuery(Name = "termo")]
+    public string? TermoQuery { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.AutoReset = false;
+        _debounceTimer.Elapsed += async (sender, e) => await LoadSuggestions();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(TermoQuery))
+        {
+            SearchTerm = TermoQuery;
+            veiculos = await VeiculoService.SearchAsync(TermoQuery);
+        }
+        else
+        {
+            veiculos = await VeiculoService.GetAllAsync();
+        }
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        SearchTerm = e.Value?.ToString() ?? "";
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private async Task LoadSuggestions()
+    {
+        if (string.IsNullOrWhiteSpace(SearchTerm) || SearchTerm.Length < 2)
+        {
+            suggestions.Clear();
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        suggestions = (await VeiculoService.GetSuggestionsAsync(SearchTerm)).ToList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void SelectSuggestion(string suggestion)
+    {
+        SearchTerm = suggestion;
+        suggestions.Clear();
+        Search();
+    }
+
+    private void Search()
+    {
+        if (!string.IsNullOrWhiteSpace(SearchTerm))
+        {
+            NavigationManager.NavigateTo($"veiculos?termo={SearchTerm}");
+        }
+        else
+        {
+            NavigationManager.NavigateTo("veiculos");
+        }
+    }
+
+    private void HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            Search();
+        }
+    }
+    
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}

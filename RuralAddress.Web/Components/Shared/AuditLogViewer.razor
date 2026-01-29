@@ -1,0 +1,165 @@
+@using RuralAddress.Infrastructure.Data
+@using RuralAddress.Core.Entities
+@using Microsoft.EntityFrameworkCore
+@using System.Text.Json
+@inject AppDbContext DbContext
+
+<div class="card mt-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Histórico de Alterações (Últimas 3)</h5>
+    </div>
+    <div class="card-body">
+        @if (logs == null)
+        {
+            <p>Carregando...</p>
+        }
+        else if (!logs.Any())
+        {
+            <p class="text-muted">Nenhuma alteração registrada.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th style="width: 150px;">Data/Hora</th>
+                            <th style="width: 150px;">Usuário</th>
+                            <th style="width: 100px;">Ação</th>
+                            <th>Alterações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in logs)
+                        {
+                            <tr>
+                                <td>@log.Timestamp.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@GetUserName(log.UserId)</td>
+                                <td>
+                                    <span class="badge @GetBadgeClass(log.Action)">@TranslateAction(log.Action)</span>
+                                </td>
+                                <td class="small">
+                                    <span class="fw-bold d-block text-secondary small">@TranslateEntityName(log.EntityName) @(log.EntityName != EntityName ? "(Vinculado)" : "")</span>
+                                    @((MarkupString)FormatChanges(log.Changes))
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string EntityName { get; set; } = string.Empty;
+    [Parameter] public string EntityId { get; set; } = string.Empty;
+
+    private List<AuditLog>? logs;
+    private Dictionary<string, string> userNames = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(EntityName) && !string.IsNullOrEmpty(EntityId))
+        {
+            await LoadLogs();
+        }
+    }
+
+    private async Task LoadLogs()
+    {
+        logs = await DbContext.AuditLogs
+            .Where(x => (x.EntityName == EntityName && x.EntityId == EntityId) ||
+                        (x.ParentEntityName == EntityName && x.ParentEntityId == EntityId))
+            .OrderByDescending(x => x.Timestamp)
+            .Take(10) // Show a bit more if including children, but user said "last 3 modifications of each item". 
+                      // If we aggregate, a limit of 3 might hide the property change if 3 people were added. 
+                      // Let's keep a reasonable history size here or stick to the "Cleanup" logic which enforces 3 per entity.
+                      // If cleanup enforces 3 per entity-id, then we might see up to 3 for Property + 3 for EACH Person.
+            .ToListAsync();
+
+        await LoadUserNames();
+    }
+
+    private async Task LoadUserNames()
+    {
+        if (logs == null || !logs.Any()) return;
+
+        var userIds = logs.Select(l => l.UserId).Distinct().ToList();
+        
+        // Avoid fetching if already loaded (though logs change, so maybe just fetch missing)
+        var missingIds = userIds.Where(id => !string.IsNullOrEmpty(id) && !userNames.ContainsKey(id)).ToList();
+
+        if (missingIds.Any())
+        {
+            var users = await DbContext.Users
+                .Where(u => missingIds.Contains(u.Id))
+                .Select(u => new { u.Id, u.Email, u.UserName })
+                .ToListAsync();
+
+            foreach (var u in users)
+            {
+                userNames[u.Id] = !string.IsNullOrEmpty(u.Email) ? u.Email : u.UserName ?? "Desconhecido";
+            }
+        }
+    }
+
+    private string GetUserName(string? userId)
+    {
+        if (string.IsNullOrEmpty(userId)) return "Sistema";
+        if (userNames.TryGetValue(userId, out var name)) return name;
+        return userId; // Fallback to ID if not found
+    }
+
+    private string TranslateAction(string action) => action switch
+    {
+        "Added" => "Adicionado",
+        "Modified" => "Modificado",
+        "Deleted" => "Removido",
+        _ => action
+    };
+
+    private string TranslateEntityName(string entity) => entity switch
+    {
+        "Propriedade" => "Propriedade",
+        "Pessoa" => "Pessoa",
+        "Veiculo" => "Veículo",
+        "PropriedadeCultivo" => "Cultivo",
+         _ => entity
+    };
+
+    private string GetBadgeClass(string action) => action switch
+    {
+        "Added" => "bg-success",
+        "Modified" => "bg-warning text-dark",
+        "Deleted" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string FormatChanges(string? changesJson)
+    {
+        if (string.IsNullOrEmpty(changesJson)) return "-";
+
+        try
+        {
+            // Try to parse as Dictionary
+            var changes = JsonSerializer.Deserialize<Dictionary<string, object>>(changesJson);
+            if (changes != null)
+            {
+                var formatted = new System.Text.StringBuilder();
+                formatted.Append("<ul class='mb-0 pl-3'>");
+                foreach (var kvp in changes)
+                {
+                    formatted.Append($"<li><strong>{kvp.Key}:</strong> {kvp.Value}</li>");
+                }
+                formatted.Append("</ul>");
+                return formatted.ToString();
+            }
+        }
+        catch
+        {
+            // fallback
+        }
+        return changesJson;
+    }
+}

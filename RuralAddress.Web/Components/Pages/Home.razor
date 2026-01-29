@@ -1,0 +1,183 @@
+﻿@page "/"
+@rendermode InteractiveServer
+
+<PageTitle>Rural Address - Dashboard</PageTitle>
+
+@using RuralAddress.Core.Interfaces
+@inject IPropriedadeService PropriedadeService
+
+<div class="hero-section animate-fade-in">
+    <h1 class="display-4 fw-bold text-gradient mb-3">Bem-vindo ao CEP Rural Andradas</h1>
+    <p class="lead text-muted mb-4">Gestão inteligente e moderna para endereçamento rural.</p>
+
+    <div class="row justify-content-center mb-5">
+        <div class="col-md-6">
+            <div class="search-box p-1 bg-white rounded-pill shadow-sm border d-flex align-items-center position-relative">
+                <i class="bi bi-search text-muted ms-3 fs-5"></i>
+                <input type="text" class="form-control border-0 shadow-none bg-transparent" 
+                       placeholder="Buscar propriedade por nome, CEP ou bairro..." 
+                       @bind="SearchTerm" @oninput="OnInput" @onkeypress="HandleKeyPress">
+                <button class="btn btn-primary rounded-pill px-4" @onclick="Search">Buscar</button>
+                
+                @if (suggestions.Any())
+                {
+                    <ul class="list-group position-absolute w-100 shadow-lg start-0 top-100 mt-2 rounded-3 overflow-hidden" style="z-index: 1000; text-align: left;">
+                        @foreach (var suggestion in suggestions)
+                        {
+                            <li class="list-group-item list-group-item-action cursor-pointer" role="button" @onclick="() => SelectSuggestion(suggestion)">
+                                <i class="bi bi-search me-2 text-muted"></i> @suggestion
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center g-4">
+        <!-- Card Propriedades -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-hover">
+                <div class="card-body text-center p-5">
+                    <div class="icon-circle bg-primary-light mb-4 mx-auto">
+                        <i class="fa-solid fa-house-chimney text-white fs-2"></i>
+                    </div>
+                    <h3 class="card-title h4 mb-3">Propriedades</h3>
+                    <p class="card-text text-muted mb-4">Gerencie cadastros de propriedades rurais, localização e detalhes.</p>
+                    <a href="propriedades" class="btn btn-primary w-100">Acessar</a>
+                </div>
+            </div>
+        </div>
+
+        <AuthorizeView Roles="Admin,Gerente">
+            <!-- Card Pessoas -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-hover">
+                    <div class="card-body text-center p-5">
+                        <div class="icon-circle bg-accent-light mb-4 mx-auto">
+                            <i class="fa-solid fa-users text-white fs-2"></i>
+                        </div>
+                        <h3 class="card-title h4 mb-3">Pessoas</h3>
+                        <p class="card-text text-muted mb-4">Cadastre proprietários, moradores e vínculos com as terras.</p>
+                        <a href="pessoas" class="btn btn-primary w-100">Acessar</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Veículos -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-hover">
+                    <div class="card-body text-center p-5">
+                        <div class="icon-circle bg-secondary mb-4 mx-auto">
+                            <i class="fa-solid fa-tractor text-white fs-2"></i>
+                        </div>
+                        <h3 class="card-title h4 mb-3">Veículos</h3>
+                        <p class="card-text text-muted mb-4">Controle de frota e veículos autorizados nas propriedades.</p>
+                        <a href="veiculos" class="btn btn-primary w-100">Acessar</a>
+                    </div>
+                </div>
+            </div>
+        </AuthorizeView>
+    </div>
+</div>
+
+<style>
+    .icon-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+        box-shadow: var(--shadow-md);
+    }
+    
+    .bg-accent-light {
+        background: linear-gradient(135deg, var(--accent-color), var(--accent-light)) !important;
+    }
+    
+    .bg-secondary {
+        background: linear-gradient(135deg, #6b7280, #9ca3af) !important;
+    }
+
+    .shadow-hover {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .shadow-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-lg) !important;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.8s ease-out;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@code {
+    private string SearchTerm { get; set; } = "";
+    private List<string> suggestions = new();
+    private System.Timers.Timer? _debounceTimer;
+    [Inject] NavigationManager Navigation { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.AutoReset = false;
+        _debounceTimer.Elapsed += async (sender, e) => await LoadSuggestions();
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        SearchTerm = e.Value?.ToString() ?? "";
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private async Task LoadSuggestions()
+    {
+        if (string.IsNullOrWhiteSpace(SearchTerm) || SearchTerm.Length < 2)
+        {
+            suggestions.Clear();
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        suggestions = await PropriedadeService.GetSuggestionsAsync(SearchTerm);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void SelectSuggestion(string suggestion)
+    {
+        SearchTerm = suggestion;
+        suggestions.Clear();
+        Search();
+    }
+
+    private void Search()
+    {
+        if (!string.IsNullOrWhiteSpace(SearchTerm))
+        {
+            Navigation.NavigateTo($"propriedades?termo={SearchTerm}");
+        }
+    }
+
+    private void HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            Search();
+        }
+    }
+    
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}

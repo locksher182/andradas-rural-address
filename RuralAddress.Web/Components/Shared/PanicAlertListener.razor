@@ -1,0 +1,347 @@
+@using RuralAddress.Web.Services
+@using RuralAddress.Core.Interfaces
+@using RuralAddress.Core.Entities
+@using Microsoft.AspNetCore.SignalR.Client
+@inject PanicStateService PanicState
+@inject IPessoaService PessoaService
+@inject IPropriedadeService PropriedadeService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+@implements IDisposable
+
+@if (showAlert)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.8); position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 100000;" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 95vw;">
+            <div class="modal-content border-danger shadow-lg" style="height: 90vh;">
+                <div class="modal-header bg-danger text-white">
+                    <h1 class="modal-title fs-4 fw-bold animate-pulse">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>ALERTA DE PÂNICO DETECTADO
+                    </h1>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAlert"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="row g-0 h-100">
+                        <div class="col-md-3 border-end bg-light p-3 d-flex flex-column align-items-center justify-content-center text-center">
+                             <div class="card w-100 mb-3">
+                                <div class="card-header bg-dark text-white">
+                                    <i class="bi bi-person-circle me-2"></i>SOLICITANTE
+                                </div>
+                                <div class="card-body">
+                                    <h2 class="text-danger fw-bold mb-3">@nomeAlerta</h2>
+                                    @if(pessoaAlerta != null)
+                                    {
+                                        <p class="mb-1"><strong>CPF:</strong> @pessoaAlerta.Cpf</p>
+                                        <p class="mb-3"><strong>ID:</strong> @pessoaAlerta.Id</p>
+                                    }
+                                    <hr />
+                                    <div class="d-grid gap-2">
+                                        <a href="@GetGoogleMapsUrl(latAlerta, lonAlerta)" target="_blank" class="btn btn-warning fw-bold text-uppercase" style="white-space: normal;">
+                                            <i class="bi bi-geo-alt-fill me-2"></i>ABRIR LOCALIZAÇÃO DO CELULAR
+                                        </a>
+                                        <small class="text-muted">Lat: @latAlerta<br>Lon: @lonAlerta</small>
+                                    </div>
+                                    
+                                    @if(isSoundPlaying)
+                                    {
+                                        <button class="btn btn-danger btn-lg mt-4 fw-bold animate-pulse" @onclick="StopSound">
+                                            <i class="bi bi-volume-mute-fill me-2"></i>PARAR ALARME
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-danger btn-sm mt-4 fw-bold" @onclick="PlaySound">
+                                            <i class="bi bi-volume-up-fill me-2"></i>Tocar Alarme de Novo
+                                        </button>
+                                    }
+                                </div>
+                                <div class="card-footer bg-danger text-white">
+                                     <small><i class="bi bi-clock me-1"></i>@timeAlerta</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-5 border-end p-3 bg-white" style="overflow-y: auto;">
+                             <h5 class="border-bottom pb-2 mb-3 text-secondary">
+                                 <i class="bi bi-house-fill me-2"></i>PROPRIEDADES VINCULADAS
+                             </h5>
+                             
+                             @if (propriedadesAlerta != null && propriedadesAlerta.Any())
+                             {
+                                 @foreach (var prop in propriedadesAlerta)
+                                 {
+                                     <div class="card mb-3 shadow-sm border-primary">
+                                         <div class="card-body">
+                                             <h5 class="card-title text-primary fw-bold">@prop.NomePropriedade</h5>
+                                             <p class="card-text mb-1">@prop.EnderecoCompleto</p>
+                                             <p class="card-text text-muted small"><strong>Bairro/Setor:</strong> @prop.Bairro @prop.Setor</p>
+                                             
+                                             @if(!string.IsNullOrEmpty(prop.LinkGoogleMaps))
+                                             {
+                                                 <a href="@prop.LinkGoogleMaps" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                                     <i class="bi bi-map me-1"></i>Ver Rota (Cadastro)
+                                                 </a>
+                                             }
+                                         </div>
+                                     </div>
+                                 }
+                             }
+                             else if (isLoading)
+                             {
+                                 <div class="alert alert-warning">
+                                     <div class="spinner-border spinner-border-sm me-2"></div>
+                                     Buscando dados...
+                                 </div>
+                             }
+                             else
+                             {
+                                  <div class="alert alert-secondary">Nenhuma propriedade encontrada.</div>
+                             }
+                        </div>
+
+                        <div class="col-md-4 p-0 d-flex flex-column bg-light">
+                            <div class="p-3 bg-secondary text-white border-bottom">
+                                <i class="bi bi-chat-dots-fill me-2"></i>CHAT COM A EQUIPE
+                            </div>
+                            
+                            <div class="flex-grow-1 p-3" style="overflow-y: auto; background-color: #f8f9fa;">
+                                @foreach (var msg in messages)
+                                {
+                                    <div class="d-flex mb-2 @(msg.IsAdmin ? "justify-content-end" : "justify-content-start")">
+                                        <div class="card shadow-sm border-0 @(msg.IsAdmin ? "bg-primary text-white" : "bg-white")" style="max-width: 80%;">
+                                            <div class="card-body py-2 px-3">
+                                                <small class="d-block fw-bold mb-1 opacity-75">@msg.Sender</small>
+                                                <div>@msg.Content</div>
+                                                <small class="d-block text-end mt-1 opacity-50" style="font-size: 0.7em;">@msg.Timestamp.ToString("HH:mm")</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            
+                            <div class="p-3 bg-white border-top">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" placeholder="Digite uma mensagem..." 
+                                           @bind="newMessage" @bind:event="oninput" @onkeyup="HandleKeyUp" />
+                                    <button class="btn btn-success" @onclick="SendMessage" disabled="@(string.IsNullOrWhiteSpace(newMessage))">
+                                        <i class="bi bi-send-fill text-white fs-5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <style>
+        .animate-pulse { animation: pulse 1s infinite; }
+        @@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+}
+
+@code {
+    private bool showAlert = false;
+    private bool isLoading = false;
+    private bool isSoundPlaying = false;
+    
+    private int idAlerta;
+    private string nomeAlerta = "";
+    private double latAlerta;
+    private double lonAlerta;
+    private string timeAlerta = "";
+    
+    private Pessoa? pessoaAlerta;
+    private List<Propriedade> propriedadesAlerta = new();
+
+    // Chat
+    private HubConnection? hubConnection;
+    private List<ChatMessage> messages = new();
+    private string newMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Assina o Pânico (Memória)
+        PanicState.OnPanicTriggered += HandlePanicEvent;
+
+        // 2. Assina o Chat (Memória)
+        PanicState.OnChatReceived += HandleChatEvent;
+
+        Console.WriteLine("DEBUG: Listener de Pânico e Chat (Singleton) ATIVOS.");
+
+        // 3. Inicializa SignalR (Backup e Envio)
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/panichub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<string, string, int>("ReceiveChatMessage", (sender, message, pessoaId) =>
+        {
+            if (showAlert && pessoaId == idAlerta)
+            {
+                var isMe = sender == "Admin"; 
+                // Evita duplicata se vier por memória e signalR ao mesmo tempo
+                if (!messages.Any(m => m.Content == message && m.Timestamp > DateTime.Now.AddSeconds(-1))) 
+                {
+                     messages.Add(new ChatMessage { Sender = sender, Content = message, Timestamp = DateTime.Now, IsAdmin = isMe });
+                     InvokeAsync(StateHasChanged);
+                }
+            }
+        });
+
+        try 
+        {
+            await hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"SignalR Error: {ex.Message}");
+        }
+    }
+
+    // --- RECEBE CHAT DA MEMÓRIA ---
+    private void HandleChatEvent(int id, string nome, string mensagem)
+    {
+        // Só atualiza se o alerta estiver aberto e for da mesma pessoa
+        if (showAlert && id == idAlerta)
+        {
+            InvokeAsync(() => 
+            {
+                Console.WriteLine($"DEBUG: Chat memória recebido de {nome}: {mensagem}");
+                
+                messages.Add(new ChatMessage { 
+                    Sender = nome, 
+                    Content = mensagem, 
+                    Timestamp = DateTime.Now, 
+                    IsAdmin = false 
+                });
+                
+                StateHasChanged(); 
+            });
+        }
+    }
+
+    private void HandlePanicEvent(int id, string nome, double lat, double lon)
+    {
+        InvokeAsync(async () => 
+        {
+            await PlaySound();
+
+            idAlerta = id;
+            nomeAlerta = nome;
+            latAlerta = lat;
+            lonAlerta = lon;
+            timeAlerta = DateTime.Now.ToString("HH:mm:ss");
+            propriedadesAlerta.Clear();
+            messages.Clear(); 
+            isLoading = true;
+            showAlert = true;
+            StateHasChanged();
+
+            try 
+            {
+                pessoaAlerta = await PessoaService.GetByIdAsync(id);
+                if (pessoaAlerta != null && !string.IsNullOrEmpty(pessoaAlerta.Cpf))
+                {
+                    var pessoasEncontradas = await PessoaService.SearchAsync(pessoaAlerta.Cpf);
+                    if (pessoasEncontradas != null)
+                    {
+                        propriedadesAlerta = pessoasEncontradas
+                            .Where(p => p.Propriedade != null)
+                            .Select(p => p.Propriedade!)
+                            .DistinctBy(p => p.Id)
+                            .ToList();
+                    }
+                }
+                else if (pessoaAlerta != null && pessoaAlerta.PropriedadeId > 0)
+                {
+                    var prop = await PropriedadeService.GetByIdAsync(pessoaAlerta.PropriedadeId);
+                    if(prop != null) propriedadesAlerta.Add(prop);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao carregar dados: {ex.Message}");
+            }
+            finally 
+            {
+                isLoading = false;
+                StateHasChanged();
+            }
+        });
+    }
+
+    private async Task PlaySound()
+    {
+        isSoundPlaying = true;
+        await JSRuntime.InvokeVoidAsync("eval", @"
+            if (!window.panicAudio) {
+                window.panicAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
+                window.panicAudio.loop = true;
+            }
+            window.panicAudio.currentTime = 0;
+            window.panicAudio.play().catch(e => console.error('Audio play failed:', e));
+            if(navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 500]);
+        ");
+        StateHasChanged();
+    }
+
+    private async Task StopSound()
+    {
+        isSoundPlaying = false;
+        await JSRuntime.InvokeVoidAsync("eval", @"
+            if (window.panicAudio) {
+                window.panicAudio.pause();
+                window.panicAudio.currentTime = 0;
+            }
+        ");
+        StateHasChanged();
+    }
+
+    private async Task SendMessage()
+    {
+        if (hubConnection is not null && !string.IsNullOrWhiteSpace(newMessage))
+        {
+            // Adiciona visualmente na hora
+            messages.Add(new ChatMessage { Sender = "Admin", Content = newMessage, Timestamp = DateTime.Now, IsAdmin = true });
+            
+            // Envia para o servidor
+            await hubConnection.SendAsync("SendChatMessage", "Admin", newMessage, idAlerta);
+            
+            newMessage = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SendMessage();
+    }
+
+    public async void Dispose()
+    {
+        PanicState.OnPanicTriggered -= HandlePanicEvent;
+        PanicState.OnChatReceived -= HandleChatEvent;
+        
+        if (isSoundPlaying) await StopSound();
+        
+        if (hubConnection is not null) await hubConnection.DisposeAsync();
+    }
+
+    private void CloseAlert() 
+    {
+        _ = StopSound();
+        showAlert = false;
+    }
+
+    private string GetGoogleMapsUrl(double lat, double lon) => 
+        $"https://www.google.com/maps/search/?api=1&query={lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{lon.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
+    class ChatMessage 
+    {
+        public string Sender { get; set; } = "";
+        public string Content { get; set; } = "";
+        public DateTime Timestamp { get; set; }
+        public bool IsAdmin { get; set; }
+    }
+}

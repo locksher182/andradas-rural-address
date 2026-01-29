@@ -1,0 +1,111 @@
+@page "/admin/users/create"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using RuralAddress.Core.Entities
+@using Microsoft.EntityFrameworkCore
+@using System.ComponentModel.DataAnnotations
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+@inject NavigationManager NavigationManager
+
+<PageTitle>Novo Usuário</PageTitle>
+
+<div class="container mt-4">
+    <h1>Novo Usuário</h1>
+    <hr />
+
+    <div class="row">
+        <div class="col-md-6">
+            <EditForm Model="Input" OnValidSubmit="CreateUserAsync">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" />
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <InputText id="email" class="form-control" @bind-Value="Input.Email" />
+                    <ValidationMessage For="() => Input.Email" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Senha Inicial</label>
+                    <InputText id="password" type="password" class="form-control" @bind-Value="Input.Password" />
+                    <ValidationMessage For="() => Input.Password" class="text-danger" />
+                    <small class="text-muted">O usuário será obrigado a trocar esta senha no primeiro login.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="role" class="form-label">Função</label>
+                    <InputSelect id="role" class="form-select" @bind-Value="Input.Role">
+                        @foreach (var role in availableRoles)
+                        {
+                            <option value="@role">@role</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Criar Usuário</button>
+                <a href="admin/users" class="btn btn-secondary">Cancelar</a>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private InputModel Input { get; set; } = new();
+    private List<string> availableRoles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        availableRoles = await RoleManager.Roles.Select(r => r.Name!).ToListAsync();
+        if (string.IsNullOrEmpty(Input.Role) && availableRoles.Any())
+        {
+            Input.Role = "Basico"; // Default
+        }
+    }
+
+    public class InputModel
+    {
+        [Required]
+        [EmailAddress]
+        [Display(Name = "Email")]
+        public string Email { get; set; } = "";
+
+        [Required]
+        [StringLength(100, ErrorMessage = "A {0} deve ter pelo menos {2} e no máximo {1} caracteres.", MinimumLength = 6)]
+        [DataType(DataType.Password)]
+        [Display(Name = "Senha")]
+        public string Password { get; set; } = "";
+
+        [Required]
+        [Display(Name = "Função")]
+        public string Role { get; set; } = "Basico";
+    }
+
+    private async Task CreateUserAsync()
+    {
+        var user = new ApplicationUser
+        {
+            UserName = Input.Email,
+            Email = Input.Email,
+            MustChangePassword = true,
+            EmailConfirmed = true // Auto-confirm for admin created users
+        };
+
+        var result = await UserManager.CreateAsync(user, Input.Password);
+
+        if (result.Succeeded)
+        {
+            if (!string.IsNullOrEmpty(Input.Role))
+            {
+                await UserManager.AddToRoleAsync(user, Input.Role);
+            }
+            NavigationManager.NavigateTo("admin/users");
+        }
+        else
+        {
+            // Ideally handle errors here
+        }
+    }
+}

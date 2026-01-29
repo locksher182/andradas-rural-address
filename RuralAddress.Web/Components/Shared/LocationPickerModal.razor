@@ -1,0 +1,67 @@
+@inject IJSRuntime JS
+
+@if (ShowModal)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Selecionar Localização</h5>
+                    <button type="button" class="btn-close" @onclick="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="map" style="height: 400px; width: 100%;"></div>
+                    <p class="text-muted mt-2 mb-0 small">Clique ou arraste o marcador para ajustar a localização.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Close">Cancelar</button>
+                    <button type="button" class="btn btn-primary" @onclick="ConfirmSelection">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    public bool ShowModal { get; private set; }
+    
+    [Parameter]
+    public EventCallback<(decimal Lat, decimal Lng)> OnLocationSelected { get; set; }
+
+    private decimal? _initialLat;
+    private decimal? _initialLng;
+
+    public async Task Show(decimal? lat, decimal? lng)
+    {
+        ShowModal = true;
+        _initialLat = lat;
+        _initialLng = lng;
+        StateHasChanged();
+
+        // Give time for modal to render DIV
+        await Task.Delay(100); 
+        await JS.InvokeVoidAsync("locationPicker.initMap", "map", _initialLat, _initialLng);
+    }
+
+    private void Close()
+    {
+        ShowModal = false;
+        StateHasChanged();
+    }
+
+    private async Task ConfirmSelection()
+    {
+        var coords = await JS.InvokeAsync<LocationResult>("locationPicker.getCoordinates");
+        if (coords != null)
+        {
+            await OnLocationSelected.InvokeAsync((coords.Lat, coords.Lng));
+            Close();
+        }
+    }
+
+    public class LocationResult
+    {
+        public decimal Lat { get; set; }
+        public decimal Lng { get; set; }
+    }
+}

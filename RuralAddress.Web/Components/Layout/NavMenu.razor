@@ -1,0 +1,220 @@
+﻿@using System.IO
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Hosting
+
+@inject IWebHostEnvironment Environment
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">CEP Rural Andradas</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column h-100">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="fa-solid fa-house-chimney me-3" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="propriedades">
+                <span class="fa-solid fa-house-chimney-medical me-3" aria-hidden="true"></span> Propriedades
+            </NavLink>
+        </div>
+
+        <AuthorizeView Roles="Admin,Gerente">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="pessoas">
+                    <span class="fa-solid fa-users me-3" aria-hidden="true"></span> Pessoas
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="veiculos">
+                    <span class="fa-solid fa-tractor me-3" aria-hidden="true"></span> Veículos
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="panic">
+                     <span class="fa-solid fa-tower-broadcast me-3" aria-hidden="true"></span> Botão do Pânico
+                </NavLink>
+            </div>
+        </AuthorizeView>
+
+        <AuthorizeView Roles="Admin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/parametros">
+                    <span class="fa-solid fa-sliders me-3" aria-hidden="true"></span> Parâmetros
+                </NavLink>
+            </div>
+        </AuthorizeView>
+
+        <div class="flex-grow-1"></div>
+
+        <AuthorizeView Roles="Admin">
+            <div class="nav-item px-3">
+                 <NavLink class="nav-link" href="admin/users">
+                     <span class="fa-solid fa-id-card me-3" aria-hidden="true"></span> Usuários do Sistema
+                 </NavLink>
+            </div>
+        </AuthorizeView>
+
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="change-password">
+                        <span class="fa-solid fa-key me-3" aria-hidden="true"></span> Trocar Senha
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="logout">
+                        <span class="fa-solid fa-right-from-bracket me-3" aria-hidden="true"></span> Sair
+                    </NavLink>
+                    <div class="text-white small text-center pb-3">
+                        (@context.User.Identity?.Name)
+                        <AuthorizeView Roles="Admin" Context="adminContext">
+                            <div class="small text-warning mt-1" style="font-size: 0.75rem;">
+                                @lastBackupMessage
+                            </div>
+
+                            <div class="nav-item px-3">
+                                <InputFile id="backupFileInput" OnChange="OnBackupFileSelected" hidden />
+                                <NavLink class="nav-link" href="javascript:void(0);" onclick="document.getElementById('backupFileInput').click();">
+                                    <span class="fa-solid fa-database me-3" aria-hidden="true"></span> Restaurar
+                                </NavLink>
+                            </div>
+                            <div class="text-white-50 text-center mt-2" style="font-size: 0.65rem;">
+                                Ver: 2025.12.22.12
+                            </div>
+                        </AuthorizeView>
+
+                    </div>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">
+                        <span class="fa-solid fa-right-to-bracket me-3" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="register">
+                        <span class="fa-solid fa-user-plus me-3" aria-hidden="true"></span> Registrar
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private string? lastBackupMessage = "Iniciando...";
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    protected override void OnInitialized()
+    {
+        CheckLastBackup();
+    }
+
+    private async Task OnBackupFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        bool confirmed = await JS.InvokeAsync<bool>("confirm",
+            "Atenção: Isso apagará os dados atuais e substituirá pelos do backup.\n\nDeseja continuar?");
+
+        if (!confirmed) return;
+
+        try
+        {
+            // Upload Logic separated to avoid 'using' scope issues
+            await UploadBackup(file);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Erro ao preparar arquivo: " + ex.Message);
+            return;
+        }
+    }
+
+    @inject RuralAddress.Web.Services.RestoreService RestoreService
+
+    private async Task UploadBackup(IBrowserFile file)
+    {
+        try
+        {
+            // Max 100MB
+            using var stream = file.OpenReadStream(100 * 1024 * 1024);
+            await RestoreService.RestoreFromStreamAsync(stream);
+            
+            await JS.InvokeVoidAsync("alert", "Sucesso! O sistema foi restaurado.");
+            NavigationManager.NavigateTo("/", true);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", "Falha na restauração: " + ex.Message);
+        }
+    }
+
+    class ErrorResponse { public string message { get; set; } public string details { get; set; } }
+
+    private void CheckLastBackup()
+    {
+        try
+        {
+            string backupPath = Configuration["BackupPath"];
+
+            if (string.IsNullOrEmpty(backupPath))
+            {
+                var userProfile = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
+                var path1 = Path.Combine(userProfile, "Google Drive", "Backups_RuralAddress");
+                var path2 = Path.Combine(userProfile, "GoogleDrive", "Backups_RuralAddress");
+
+                if (Directory.Exists(path1)) backupPath = path1;
+                else if (Directory.Exists(path2)) backupPath = path2;
+                else backupPath = path1;
+            }
+
+            if (Directory.Exists(backupPath))
+            {
+                var directoryInfo = new DirectoryInfo(backupPath);
+                var latestFile = directoryInfo.GetFiles("RuralAddress_*.sql")
+                                              .OrderByDescending(f => f.CreationTime)
+                                              .FirstOrDefault();
+
+                if (latestFile != null)
+                {
+                    lastBackupMessage = $"Último Backup: {latestFile.CreationTime:dd/MM HH:mm}";
+                }
+                else
+                {
+                    lastBackupMessage = "Último Backup: Nenhum";
+                }
+            }
+            else
+            {
+                lastBackupMessage = "Backup n/c (Dir?)";
+            }
+        }
+        catch (Exception ex)
+        {
+            lastBackupMessage = "Erro Backup";
+            // Logger.LogError(ex, "Error checking backup");
+        }
+    }
+}

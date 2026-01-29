@@ -1,0 +1,75 @@
+﻿@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Logging
+@using RuralAddress.Core.Entities
+@using RuralAddress.Web.Components.Shared
+@inject IServiceScopeFactory ScopeFactory
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject ILogger<MainLayout> Logger
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <ErrorBoundary>
+            <ChildContent>
+                <PanicAlertListener @rendermode="InteractiveServer" />
+            </ChildContent>
+            <ErrorContent Context="ex">
+                <div class="alert alert-danger position-fixed bottom-0 end-0 m-3" style="z-index: 2000; max-width: 400px;">
+                    <strong>Erro no Alerta:</strong> @ex.Message
+                    <button type="button" class="btn-close float-end" data-bs-dismiss="alert"></button>
+                </div>
+            </ErrorContent>
+        </ErrorBoundary>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui-disabled" data-nosnippet class="d-none">
+    <div class="alert alert-warning m-0 rounded-0">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Ocorreu um erro não tratado.
+        <a href="." class="reload fw-bold text-dark text-decoration-underline">Recarregar</a>
+        <span class="dismiss ms-3 cursor-pointer"><i class="bi bi-x-lg"></i></span>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                using (var scope = ScopeFactory.CreateScope())
+                {
+                    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                    var appUser = await userManager.GetUserAsync(user);
+                    
+                    if (appUser?.MustChangePassword == true)
+                    {
+                        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+                        if (!uri.AbsolutePath.Contains("change-password") && !uri.AbsolutePath.Contains("logout"))
+                        {
+                            NavigationManager.NavigateTo("change-password");
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error in MainLayout OnParametersSetAsync");
+        }
+    }
+}

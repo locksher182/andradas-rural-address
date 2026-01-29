@@ -1,0 +1,31 @@
+﻿<script type="module" src="@Assets["js/reconnect-modal.js"]"></script>
+
+<dialog id="components-reconnect-modal" data-nosnippet>
+    <div class="components-reconnect-container">
+        <div class="components-rejoining-animation" aria-hidden="true">
+            <div></div>
+            <div></div>
+        </div>
+        <p class="components-reconnect-first-attempt-visible">
+            Reconectando ao servidor...
+        </p>
+        <p class="components-reconnect-repeated-attempt-visible">
+            Falha na reconexão... tentando novamente em <span id="components-seconds-to-next-attempt"></span> segundos.
+        </p>
+        <p class="components-reconnect-failed-visible">
+            Falha ao reconectar.<br />Por favor, tente novamente ou recarregue a página.
+        </p>
+        <button id="components-reconnect-button" class="components-reconnect-failed-visible">
+            Tentar Novamente
+        </button>
+        <p class="components-pause-visible">
+            A sessão foi pausada pelo servidor.
+        </p>
+        <button id="components-resume-button" class="components-pause-visible">
+            Resumir
+        </button>
+        <p class="components-resume-failed-visible">
+            Falha ao resumir a sessão.<br />Por favor, recarregue a página.
+        </p>
+    </div>
+</dialog>

@@ -1,0 +1,265 @@
+@page "/propriedades"
+@using RuralAddress.Core.Entities
+@using RuralAddress.Core.Interfaces
+@inject IPropriedadeService PropriedadeService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Propriedades</PageTitle>
+
+<h1>Propriedades Rurais</h1>
+
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <AuthorizeView Roles="Admin,Gerente">
+            <a href="propriedades/novo" class="btn btn-primary">Nova Propriedade</a>
+        </AuthorizeView>
+    </div>
+    <div class="col-md-6">
+        <div class="position-relative">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0">
+                    <i class="bi bi-search text-muted"></i>
+                </span>
+                <input type="text" class="form-control border-start-0 ps-0" 
+                       placeholder="Buscar propriedade..." 
+                       @bind="SearchTerm" @oninput="OnInput" @onkeypress="HandleKeyPress">
+                <button class="btn btn-primary" @onclick="Search">Buscar</button>
+            </div>
+            
+            @if (suggestions.Any())
+            {
+                <ul class="list-group position-absolute w-100 shadow-lg start-0 top-100 mt-1 rounded-3 overflow-hidden" style="z-index: 1000;">
+                    @foreach (var suggestion in suggestions)
+                    {
+                        <li class="list-group-item list-group-item-action cursor-pointer" role="button" @onclick="() => SelectSuggestion(suggestion)">
+                            @suggestion
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <div class="input-group">
+            <span class="input-group-text bg-light">Filtrar por:</span>
+            <select class="form-select" value="@selectedSetor" @onchange="OnSetorChanged">
+                <option value="0">Todos os Setores</option>
+                @for (int i = 1; i <= 14; i++)
+                {
+                    <option value="@i">Setor @i</option>
+                }
+            </select>
+        </div>
+    </div>
+</div>
+
+@if (propriedades == null)
+{
+    <p><em>Carregando...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>CEP Rural</th>
+                <th>Setor</th>
+                <th>Bairro</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in propriedades)
+            {
+                <tr>
+                    <td>@item.NomePropriedade</td>
+                    <td>@item.CepRural</td>
+                    <td>@item.Setor</td>
+                    <td>@item.Bairro</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="propriedades/editar/@item.Id" class="btn btn-secondary btn-sm" title="Detalhes">
+                                <i class="bi bi-eye"></i> Detalhes
+                            </a>
+                            <AuthorizeView Roles="Admin,Gerente">
+                                <button class="btn btn-danger btn-sm" @onclick="async () => await DeletePropriedade(item.Id)" title="Excluir">
+                                    <i class="bi bi-trash"></i> Excluir
+                                </button>
+                            </AuthorizeView>
+                            <a href="@GetWhatsappLink(item)" target="_blank" class="btn btn-whatsapp btn-sm btn-icon-square" title="Enviar via WhatsApp">
+                                <i class="fa-brands fa-whatsapp fs-6"></i>
+                            </a>
+                            <a href="@GetTelegramLink(item)" target="_blank" class="btn btn-telegram btn-sm btn-icon-square" title="Enviar via Telegram">
+                                <i class="fa-brands fa-telegram fs-6"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Propriedade> propriedades = new();
+    private string SearchTerm { get; set; } = "";
+    private List<string> suggestions = new();
+    private System.Timers.Timer? _debounceTimer;
+    private int selectedSetor = 0;
+    
+    [SupplyParameterFromQuery(Name = "termo")]
+    public string? TermoBusca { get; set; }
+
+    [SupplyParameterFromQuery(Name = "setor")]
+    public int? SetorQuery { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _debounceTimer = new System.Timers.Timer(300);
+        _debounceTimer.AutoReset = false;
+        _debounceTimer.Elapsed += async (sender, e) => await LoadSuggestions();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (SetorQuery.HasValue)
+        {
+            selectedSetor = SetorQuery.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(TermoBusca))
+        {
+            SearchTerm = TermoBusca;
+            selectedSetor = 0; 
+            propriedades = await PropriedadeService.SearchAsync(TermoBusca);
+        }
+        else if (selectedSetor > 0)
+        {
+            propriedades = await PropriedadeService.GetBySetorAsync(selectedSetor);
+        }
+        else
+        {
+            propriedades = await PropriedadeService.GetAllAsync();
+        }
+    }
+
+    private void OnSetorChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int setor))
+        {
+            FilterBySetor(setor);
+        }
+    }
+
+    private void FilterBySetor(int setor)
+    {
+        selectedSetor = setor;
+        SearchTerm = ""; // Clear search when filtering by sector
+        NavigationManager.NavigateTo(setor > 0 ? $"propriedades?setor={setor}" : "propriedades");
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        SearchTerm = e.Value?.ToString() ?? "";
+        _debounceTimer?.Stop();
+        _debounceTimer?.Start();
+    }
+
+    private async Task LoadSuggestions()
+    {
+        if (string.IsNullOrWhiteSpace(SearchTerm) || SearchTerm.Length < 2)
+        {
+            suggestions.Clear();
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        // Use Scoped Suggestions for this page
+        suggestions = (await PropriedadeService.GetScopedSuggestionsAsync(SearchTerm)).ToList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void SelectSuggestion(string suggestion)
+    {
+        SearchTerm = suggestion;
+        suggestions.Clear();
+        Search();
+    }
+
+    private void Search()
+    {
+        if (!string.IsNullOrWhiteSpace(SearchTerm))
+        {
+            NavigationManager.NavigateTo($"propriedades?termo={SearchTerm}");
+        }
+        else
+        {
+             NavigationManager.NavigateTo(selectedSetor > 0 ? $"propriedades?setor={selectedSetor}" : "propriedades");
+        }
+    }
+
+    private void HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            Search();
+        }
+    }
+
+    private async Task DeletePropriedade(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Tem certeza que deseja excluir esta propriedade?"))
+        {
+            await PropriedadeService.DeleteAsync(id);
+            // Refresh logic
+            if (!string.IsNullOrWhiteSpace(TermoBusca))
+            {
+                propriedades = await PropriedadeService.SearchAsync(TermoBusca);
+            }
+            else if (selectedSetor > 0)
+            {
+                 propriedades = await PropriedadeService.GetBySetorAsync(selectedSetor);
+            }
+            else
+            {
+                propriedades = await PropriedadeService.GetAllAsync();
+            }
+        }
+    }
+    
+    private string GetShareMessage(Propriedade p)
+    {
+        return $"Ocorrência em andamento no Setor {p.Setor} - Bairro {p.Bairro} - *CEP Rural* {p.CepRural}.";
+    }
+
+    private string GetMapsLink(Propriedade p)
+    {
+        var lat = (p.Latitude ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var lon = (p.Longitude ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return $"https://www.google.com/maps/search/?api=1&query={lat},{lon}";
+    }
+
+    private string GetWhatsappLink(Propriedade p)
+    {
+        var text = $"{GetShareMessage(p)} - Localização: {GetMapsLink(p)}";
+        return $"https://wa.me/?text={System.Net.WebUtility.UrlEncode(text)}";
+    }
+
+    private string GetTelegramLink(Propriedade p)
+    {
+        var text = GetShareMessage(p);
+        var url = GetMapsLink(p);
+        return $"https://t.me/share/url?url={System.Net.WebUtility.UrlEncode(url)}&text={System.Net.WebUtility.UrlEncode(text)}";
+    }
+    
+    public void Dispose()
+    {
+        _debounceTimer?.Dispose();
+    }
+}

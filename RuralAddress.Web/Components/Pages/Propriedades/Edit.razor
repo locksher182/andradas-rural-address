@@ -1,0 +1,992 @@
+@page "/propriedades/novo"
+@page "/propriedades/editar/{Id:int}"
+@using RuralAddress.Core.Entities
+@using RuralAddress.Core.Interfaces
+@using RuralAddress.Core.Helpers
+@using RuralAddress.Web.Components.Shared
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Hosting
+@inject IPropriedadeService PropriedadeService
+@inject IPessoaService PessoaService
+@inject IVeiculoService VeiculoService
+@inject ISystemParameterService SystemParameterService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+@inject IWebHostEnvironment Environment
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+<PageTitle>@titulo</PageTitle>
+
+@if (propriedade == null)
+{
+    <p><em>Carregando...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-12">
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                    <a class="nav-link @(activeTab == "dados" ? "active" : "")" @onclick="@(() => SetActiveTab("dados"))" style="cursor: pointer">Dados da Propriedade</a>
+                </li>
+                @if (canViewDetails)
+                {
+                    <li class="nav-item">
+                        <a class="nav-link @(activeTab == "pessoas" ? "active" : "")" @onclick="@(() => SetActiveTab("pessoas"))" style="cursor: pointer">Pessoas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(activeTab == "veiculos" ? "active" : "")" @onclick="@(() => SetActiveTab("veiculos"))" style="cursor: pointer">Veículos</a>
+                    </li>
+                }
+                @if (propriedade.Id > 0)
+                {
+                    <li class="nav-item">
+                        <a class="nav-link @(activeTab == "historico" ? "active" : "")" @onclick="@(() => SetActiveTab("historico"))" style="cursor: pointer">Histórico</a>
+                    </li>
+                }
+            </ul>
+
+            @if (activeTab == "dados")
+            {
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        @errorMessage
+                    </div>
+                }
+
+                    <EditForm Model="propriedade" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label for="nome" class="form-label">Nome da Propriedade</label>
+                        <input type="text" class="form-control" @bind="propriedade.NomePropriedade" disabled="@(isReadOnly || isViewMode)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Foto da Propriedade</label>
+                        @if (!string.IsNullOrEmpty(propriedade.FotoCaminho))
+                        {
+                            <div class="mb-2">
+                                <img src="@propriedade.FotoCaminho" alt="Foto da Propriedade" style="max-width: 100%; max-height: 300px; border-radius: 8px;" />
+                            </div>
+                        }
+                        
+                        @if (!isReadOnly && !isViewMode)
+                        {
+                            <InputFile OnChange="HandleFileSelected" class="form-control" accept=".jpg,.jpeg,.png" />
+                            <div class="form-text">Formatos aceitos: JPG, PNG. A foto anterior será substituída automaticamente.</div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="cep" class="form-label">CEP Rural</label>
+                        <input type="text" class="form-control" @bind="propriedade.CepRural" placeholder="A00-0000" disabled="@(isReadOnly || isViewMode)" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="setor" class="form-label">Setor</label>
+                            <select id="setor" class="form-select" @bind="propriedade.Setor" disabled="@(isReadOnly || isViewMode)">
+                                <option value="0">Selecione...</option>
+                                @for (int i = 1; i <= 14; i++)
+                                {
+                                    <option value="@i">@i</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="bairro" class="form-label">Bairro</label>
+                            <input type="text" class="form-control" @bind="propriedade.Bairro" disabled="@(isReadOnly || isViewMode)" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="complemento" class="form-label">Complemento</label>
+                        <input type="text" class="form-control" @bind="propriedade.Complemento" disabled="@(isReadOnly || isViewMode)" />
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-5 mb-3">
+                            <label for="latitude" class="form-label">Latitude (ex: S 22° 10' 52.3")</label>
+                            <input type="text" id="latitude" class="form-control" @bind="latitudeInput" placeholder="S 00° 00' 00.0&quot;" disabled="@(isReadOnly || isViewMode)" />
+                        </div>
+                        <div class="col-md-5 mb-3">
+                            <label for="longitude" class="form-label">Longitude (ex: W 046° 31' 54.7")</label>
+                            <input type="text" id="longitude" class="form-control" @bind="longitudeInput" placeholder="W 000° 00' 00.0&quot;" disabled="@(isReadOnly || isViewMode)" />
+                        </div>
+                        <div class="col-md-2 mb-3 d-flex align-items-end">
+                             <button type="button" class="btn btn-info w-100" @onclick="OpenMap" disabled="@(isReadOnly || isViewMode)">
+                                <i class="fas fa-map-marker-alt me-2"></i>Ver no Mapa
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="linkRota" class="form-label">Link da Rota (Google Maps)</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" @bind="propriedade.LinkRota" placeholder="https://maps.app.goo.gl/..." disabled="@(isReadOnly || isViewMode)" />
+                            @if (!string.IsNullOrEmpty(propriedade.LinkRota))
+                            {
+                                <a href="@propriedade.LinkRota" target="_blank" class="btn btn-outline-secondary">Abrir Rota</a>
+                            }
+                        </div>
+                    </div>
+
+
+                    <div class="mb-3">
+                        <label class="form-label">Cultivos</label>
+                        
+                        @if (propriedade.Cultivos != null && propriedade.Cultivos.Any())
+                        {
+                            <ul class="list-group mb-2">
+                        @foreach (var pc in propriedade.Cultivos)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                @pc.Cultivo?.Name
+                                @if (!isReadOnly && !isViewMode)
+                                {
+                                    <button type="button" class="btn btn-sm btn-danger" @onclick="async () => await RemoverCultivo(pc)">Remover</button>
+                                }
+                            </li>
+                        }
+                            </ul>
+                        }
+
+                        @if (!isReadOnly && !isViewMode)
+                        {
+                            <div class="input-group">
+                                <select class="form-select" @bind="selectedCultivoId">
+                                    <option value="0">Selecione um cultivo...</option>
+                                    @if (cropTypes != null)
+                                    {
+                                        @foreach (var crop in cropTypes)
+                                        {
+                                            // Only show crops not already added
+                                            @if (!propriedade.Cultivos.Any(pc => pc.CultivoId == crop.Id))
+                                            {
+                                                <option value="@crop.Id">@crop.Name</option>
+                                            }
+                                        }
+                                    }
+                                </select>
+                                <button type="button" class="btn btn-primary" @onclick="AdicionarCultivo" disabled="@(selectedCultivoId == 0)">Adicionar</button>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="observacoes" class="form-label">Observações</label>
+                        <textarea id="observacoes" class="form-control" @bind="propriedade.Observacoes" disabled="@(isReadOnly || isViewMode)"></textarea>
+                    </div>
+
+                    @if (!isReadOnly)
+                    {
+                        @if (isViewMode)
+                        {
+                            <button type="button" class="btn btn-primary" @onclick="@(() => isViewMode = false)">Editar</button>
+                        }
+                        else
+                        {
+                            <button type="submit" class="btn btn-primary">Salvar</button>
+                            @if (propriedade.Id > 0)
+                            {
+                                <button type="button" class="btn btn-secondary" @onclick="@(() => isViewMode = true)">Cancelar Edição</button>
+                            }
+                        }
+                    }
+                    <a href="/propriedades" class="btn btn-secondary">Voltar</a>
+                </EditForm>
+            }
+            else if (activeTab == "pessoas" && canViewDetails)
+            {
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3>Pessoas Cadastradas</h3>
+                    @if (!isReadOnly)
+                    {
+                        <button class="btn btn-success" @onclick="NovaPessoa">Adicionar Pessoa</button>
+                    }
+                </div>
+
+                @if (pessoas == null)
+                {
+                    <p><em>Carregando pessoas...</em></p>
+                }
+                else if (!pessoas.Any())
+                {
+                    <p>Nenhuma pessoa cadastrada nesta propriedade.</p>
+                }
+                else
+                {
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>CPF</th>
+                                @if (!isReadOnly)
+                                {
+                                    <th>Ações</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pessoa in pessoas)
+                            {
+                                <tr>
+                                    <td>@pessoa.Nome</td>
+                                    <td>@pessoa.Cpf</td>
+                                    @if (!isReadOnly)
+                                    {
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" @onclick="() => EditarPessoa(pessoa)">Editar</button>
+                                            <button class="btn btn-sm btn-danger" @onclick="() => DeletarPessoa(pessoa.Id)">Excluir</button>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+
+            }
+            else if (activeTab == "veiculos" && canViewDetails)
+            {
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3>Veículos Cadastrados</h3>
+                    @if (!isReadOnly)
+                    {
+                        <button class="btn btn-success" @onclick="NovoVeiculo">Adicionar Veículo</button>
+                    }
+                </div>
+
+                @if (veiculos == null)
+                {
+                    <p><em>Carregando veículos...</em></p>
+                }
+                else if (!veiculos.Any())
+                {
+                    <p>Nenhum veículo cadastrado nesta propriedade.</p>
+                }
+                else
+                {
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Marca/Modelo</th>
+                                <th>Placa</th>
+                                @if (!isReadOnly)
+                                {
+                                    <th>Ações</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var veiculo in veiculos)
+                            {
+                                <tr>
+                                    <td>@veiculo.Tipo?.Name</td>
+                                    <td>@veiculo.Marca @veiculo.Modelo</td>
+                                    <td>@veiculo.Placa</td>
+                                    @if (!isReadOnly)
+                                    {
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" @onclick="() => EditarVeiculo(veiculo)">Editar</button>
+                                            <button class="btn btn-sm btn-danger" @onclick="() => DeletarVeiculo(veiculo.Id)">Excluir</button>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            }
+            else if (activeTab == "historico")
+            {
+                <AuditLogViewer EntityName="Propriedade" EntityId="@propriedade.Id.ToString()" />
+            }
+        </div>
+    </div>
+}
+
+    @if (showPessoaModal)
+    {
+        <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5); overflow-y: auto;" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(pessoaEmEdicao.Id == 0 ? "Nova Pessoa" : (isPersonViewMode ? "Detalhes da Pessoa" : "Editar Pessoa"))</h5>
+                        <button type="button" class="btn-close" @onclick="FecharModalPessoa"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm EditContext="pessoaEditContext">
+                            <DataAnnotationsValidator />
+                            <div class="text-danger fw-bold">
+                                <ValidationSummary />
+                            </div>
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger" role="alert">
+                                    @errorMessage
+                                </div>
+                            }
+                            <input type="hidden" @bind="pessoaEmEdicao.Id" />
+                            <input type="hidden" @bind="pessoaEmEdicao.PropriedadeId" />
+
+                            <div class="mb-3">
+                                <label class="form-label">Nome</label>
+                                <input type="text" class="form-control" @bind="pessoaEmEdicao.Nome" disabled="@(isPersonViewMode)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">CPF</label>
+                                <input type="text" class="form-control" @bind="pessoaEmEdicao.Cpf" disabled="@(isPersonViewMode)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">RG</label>
+                                <input type="text" class="form-control" @bind="pessoaEmEdicao.Rg" disabled="@(isPersonViewMode)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Data de Nascimento</label>
+                                <input type="date" class="form-control" @bind="pessoaEmEdicao.Nascimento" disabled="@(isPersonViewMode)" />
+                            </div>
+
+                            <AuthorizeView Roles="Admin" Context="adminContext">
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="botaoPanico" @bind="pessoaEmEdicao.TemBotaoPanico" disabled="@(isPersonViewMode)" />
+                                    <label class="form-check-label" for="botaoPanico">Habilitar Botão do Pânico</label>
+                                </div>
+                            </AuthorizeView>
+
+                            @if (isPersonViewMode)
+                            {
+                                <button type="button" class="btn btn-primary" @onclick="@(() => isPersonViewMode = false)">Editar</button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-primary" @onclick="SalvarPessoaManual">Salvar</button>
+                            }
+                            <button type="button" class="btn btn-secondary" @onclick="FecharModalPessoa">@(isPersonViewMode ? "Fechar" : "Cancelar")</button>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+
+    @if (showVeiculoModal)
+    {
+        <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5); overflow-y: auto;" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(veiculoEmEdicao.Id == 0 ? "Novo Veículo" : (isVehicleViewMode ? "Detalhes do Veículo" : "Editar Veículo"))</h5>
+                        <button type="button" class="btn-close" @onclick="FecharModalVeiculo"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="veiculoEmEdicao" OnValidSubmit="SalvarVeiculo">
+                            <DataAnnotationsValidator />
+                            <div class="text-danger fw-bold">
+                                <ValidationSummary />
+                            </div>
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger" role="alert">
+                                    @errorMessage
+                                </div>
+                            }
+                            <input type="hidden" @bind="veiculoEmEdicao.Id" />
+                            <input type="hidden" @bind="veiculoEmEdicao.PropriedadeId" />
+
+                            <div class="mb-3">
+                                <label class="form-label">Tipo</label>
+                                <select class="form-select" @bind="veiculoEmEdicao.TipoId" disabled="@(isVehicleViewMode)">
+                                    <option value="">Selecione...</option>
+                                    @if (vehicleTypes != null)
+                                    {
+                                        @foreach (var tipo in vehicleTypes)
+                                        {
+                                            <option value="@tipo.Id">@tipo.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Marca</label>
+                                <input type="text" class="form-control" @bind="veiculoEmEdicao.Marca" disabled="@(isVehicleViewMode)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Modelo</label>
+                                <input type="text" class="form-control" @bind="veiculoEmEdicao.Modelo" disabled="@(isVehicleViewMode)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Placa</label>
+                                <input type="text" class="form-control" @bind="veiculoEmEdicao.Placa" disabled="@(isVehicleViewMode)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Cor</label>
+                                <input type="text" class="form-control" @bind="veiculoEmEdicao.Cor" disabled="@(isVehicleViewMode)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Descrição</label>
+                                <input type="text" class="form-control" @bind="veiculoEmEdicao.Descricao" disabled="@(isVehicleViewMode)" />
+                            </div>
+
+                            @if (isVehicleViewMode)
+                            {
+                                <button type="button" class="btn btn-primary" @onclick="@(() => isVehicleViewMode = false)">Editar</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-primary">Salvar</button>
+                            }
+                            <button type="button" class="btn btn-secondary" @onclick="FecharModalVeiculo">@(isVehicleViewMode ? "Fechar" : "Cancelar")</button>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+
+<LocationPickerModal @ref="locationPickerModal" OnLocationSelected="HandleLocationSelected" />
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private Propriedade? propriedade { get; set; }
+
+    private string titulo = "Nova Propriedade";
+    private string activeTab = "dados";
+    private string? errorMessage;
+    private bool showSuccessMessage = false;
+    private System.Security.Claims.ClaimsPrincipal? currentUser;
+
+    // Access Control
+    private bool isReadOnly = false;
+    private bool canViewDetails = true;
+    private bool isViewMode = false;
+
+
+    // Parameters
+    private IEnumerable<SystemParameter>? vehicleTypes;
+    private IEnumerable<SystemParameter>? cropTypes;
+
+    // Pessoas
+    private List<Pessoa>? pessoas;
+    private Pessoa pessoaEmEdicao { get; set; } = new();
+    private EditContext pessoaEditContext = new(new Pessoa());
+    private bool showPessoaModal = false;
+    private bool isPersonViewMode = false;
+
+
+    // Veiculos
+    private List<Veiculo>? veiculos;
+    private Veiculo veiculoEmEdicao { get; set; } = new();
+    private bool showVeiculoModal = false;
+    private bool isVehicleViewMode = false;
+
+
+    // DMS Inputs
+    private string? latitudeInput;
+    private string? longitudeInput;
+
+    private LocationPickerModal locationPickerModal;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            if (file != null)
+            {
+                // Validate size (max 5MB)
+                const long maxFileSize = 5 * 1024 * 1024;
+                if (file.Size > maxFileSize)
+                {
+                    errorMessage = "A imagem deve ter no máximo 5MB.";
+                    return;
+                }
+
+                // 1. Create directory if not exists
+                var imagesPath = Path.Combine(Environment.WebRootPath, "imagens");
+                if (!Directory.Exists(imagesPath))
+                {
+                    Directory.CreateDirectory(imagesPath);
+                }
+
+                // 2. Delete old photo if exists
+                if (!string.IsNullOrEmpty(propriedade!.FotoCaminho))
+                {
+                    var oldFileName = Path.GetFileName(propriedade.FotoCaminho);
+                    var oldFilePath = Path.Combine(imagesPath, oldFileName);
+                    if (File.Exists(oldFilePath))
+                    {
+                        File.Delete(oldFilePath);
+                        Console.WriteLine($"Foto antiga removida: {oldFilePath}");
+                    }
+                }
+
+                // 3. Generate new name: Propriedade_{ID}_{GUID}.jpg
+                // Use temp ID if property is new (0), will rely on GUID for uniqueness in that case
+                var extension = Path.GetExtension(file.Name);
+                var newFileName = $"Propriedade_{propriedade.Id}_{Guid.NewGuid()}{extension}";
+                var newFilePath = Path.Combine(imagesPath, newFileName);
+
+                // 4. Save file
+                await using var stream = file.OpenReadStream(maxFileSize);
+                await using var fs = new FileStream(newFilePath, FileMode.Create);
+                await stream.CopyToAsync(fs);
+
+                // 5. Update property
+                propriedade.FotoCaminho = $"/imagens/{newFileName}";
+                Console.WriteLine($"Nova foto salva: {newFilePath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao enviar foto: {ex.Message}";
+            Console.WriteLine($"Erro upload: {ex}");
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("Edit.razor: OnInitializedAsync started");
+        try
+        {
+            // Check Access
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            currentUser = user;
+
+            if (user.IsInRole("Pesquisador"))
+            {
+                isReadOnly = true;
+                canViewDetails = false;
+            }
+            else if (user.IsInRole("Basico"))
+            {
+                isReadOnly = true;
+                canViewDetails = false;
+            }
+
+            vehicleTypes = await SystemParameterService.GetByGroupAsync("VehicleType");
+            cropTypes = await SystemParameterService.GetByGroupAsync("CropType");
+            Console.WriteLine("Edit.razor: System parameters loaded");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in OnInitializedAsync: {ex.Message}");
+            errorMessage = "Erro ao carregar parâmetros. Tente atualizar.";
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Console.WriteLine($"Edit.razor: OnParametersSetAsync started. Id: {Id}");
+        try
+        {
+            if (Id.HasValue)
+            {
+                if (propriedade == null || propriedade.Id != Id.Value)
+                {
+                    Console.WriteLine($"Edit.razor: Loading property {Id.Value}");
+                    titulo = isReadOnly ? "Detalhes da Propriedade" : "Editar Propriedade";
+                    propriedade = await PropriedadeService.GetByIdAsync(Id.Value);
+                    
+                    if (propriedade == null)
+                    {
+                        Console.WriteLine("Edit.razor: Property not found, redirecting");
+                        NavigationManager.NavigateTo("/propriedades");
+                        return;
+                    }
+
+                    if (canViewDetails)
+                    {
+                        Console.WriteLine("Edit.razor: Loading details (people/vehicles)");
+                        await CarregarPessoas();
+                        await CarregarVeiculos();
+                    }
+                    isViewMode = true; // Existing property starts in view mode
+
+                    // Initialize DMS inputs
+                    latitudeInput = CoordinateHelper.ConvertToDms(propriedade.Latitude, true);
+                    longitudeInput = CoordinateHelper.ConvertToDms(propriedade.Longitude, false);
+
+                }
+            }
+            else
+            {
+                if (propriedade == null)
+                {
+                    Console.WriteLine("Edit.razor: New property");
+                    // New Property - if read only, redirect back
+                if (isReadOnly)
+                {
+                    NavigationManager.NavigateTo("/propriedades");
+                    return;
+                }
+                propriedade = new Propriedade();
+                isViewMode = false; // New property always starts in edit mode
+                
+                // Pre-fill prefixes for convenience
+                latitudeInput = "S ";
+                longitudeInput = "W ";
+
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in OnParametersSetAsync: {ex.Message}");
+            errorMessage = "Erro ao carregar a propriedade. Tente atualizar.";
+            LogException(ex);
+        }
+    }
+
+    private void AddMessage(string message)
+    {
+        // Simple message handler, can be enhanced with a toast or similar
+        // For now relying on modal error messages
+    }
+
+
+
+    private void SetActiveTab(string tabName)
+    {
+        if (propriedade!.Id == 0 && tabName != "dados") return;
+        activeTab = tabName;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (isReadOnly) return;
+
+        errorMessage = null;
+        try
+        {
+            // Parse DMS before saving
+            try 
+            {
+                if (!string.IsNullOrWhiteSpace(latitudeInput))
+                    propriedade.Latitude = CoordinateHelper.ConvertToDecimal(latitudeInput);
+                else 
+                    propriedade.Latitude = null;
+
+                if (!string.IsNullOrWhiteSpace(longitudeInput))
+                    propriedade.Longitude = CoordinateHelper.ConvertToDecimal(longitudeInput);
+                else 
+                    propriedade.Longitude = null;
+            }
+            catch (FormatException fex)
+            {
+                errorMessage = fex.Message;
+                StateHasChanged();
+                await Task.Delay(300);
+                await JS.InvokeVoidAsync("window.scrollTo", new { top = 0, behavior = "smooth" });
+                return;
+            }
+
+            if (propriedade!.Id == 0)
+            {
+                var novaPropriedade = await PropriedadeService.AddAsync(propriedade);
+                propriedade = novaPropriedade;
+                // Redireciona para a mesma página com o ID para habilitar as abas
+                NavigationManager.NavigateTo($"/propriedades/editar/{propriedade.Id}");
+            }
+            else
+            {
+                await PropriedadeService.UpdateAsync(propriedade);
+                isViewMode = true; // Return to view mode after save
+                await ShowSuccessNotification();
+            }
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == "23505")
+        {
+            errorMessage = "Já existe uma propriedade cadastrada com este CEP Rural. Por favor, verifique o valor informado.";
+            StateHasChanged();
+            await Task.Delay(300);
+            await JS.InvokeVoidAsync("window.scrollTo", new { top = 0, behavior = "smooth" });
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Ocorreu um erro ao salvar a propriedade. Tente novamente.";
+            LogException(ex);
+            StateHasChanged();
+            await Task.Delay(300);
+            await JS.InvokeVoidAsync("window.scrollTo", new { top = 0, behavior = "smooth" });
+        }
+    }
+
+    private void LogException(Exception ex)
+    {
+        var mensagem = ex.Message;
+        var inner = ex.InnerException;
+
+        while (inner != null)
+        {
+            mensagem += " \n Inner Exception: " + inner.Message;
+            inner = inner.InnerException;
+        }
+
+        Console.WriteLine(mensagem);
+        errorMessage += $" Detalhes: {mensagem}";
+    }
+
+    // Pessoas Logic
+    private async Task CarregarPessoas()
+    {
+        if (propriedade!.Id > 0)
+        {
+            pessoas = (await PessoaService.GetByPropriedadeIdAsync(propriedade.Id)).ToList();
+        }
+    }
+
+    private void NovaPessoa()
+    {
+        if (isReadOnly) return;
+        errorMessage = null;
+        Console.WriteLine("NovaPessoa called");
+        pessoaEmEdicao = new Pessoa { PropriedadeId = propriedade!.Id };
+        pessoaEditContext = new EditContext(pessoaEmEdicao);
+        showPessoaModal = true;
+        isPersonViewMode = false; // New person is editable
+    }
+
+
+    private void EditarPessoa(Pessoa pessoa)
+    {
+        if (isReadOnly) return;
+        errorMessage = null;
+        Console.WriteLine($"EditarPessoa called for ID: {pessoa.Id}");
+        pessoaEmEdicao = pessoa;
+        pessoaEditContext = new EditContext(pessoaEmEdicao);
+        showPessoaModal = true;
+        isPersonViewMode = true; // Existing person starts in view mode
+    }
+
+
+    private void FecharModalPessoa()
+    {
+        Console.WriteLine("FecharModalPessoa called");
+        showPessoaModal = false;
+    }
+
+    private async Task SalvarPessoaManual()
+    {
+        if (isReadOnly) return;
+        Console.WriteLine("SalvarPessoaManual called");
+        if (pessoaEditContext != null)
+        {
+            var isValid = pessoaEditContext.Validate();
+            Console.WriteLine($"Validation result: {isValid}");
+            if (isValid)
+            {
+                await SalvarPessoa();
+            }
+            else
+            {
+                Console.WriteLine("Validation failed");
+                foreach (var message in pessoaEditContext.GetValidationMessages())
+                {
+                    Console.WriteLine($"Validation error: {message}");
+                }
+            }
+        }
+    }
+
+    private async Task SalvarPessoa()
+    {
+        if (isReadOnly) return;
+        try
+        {
+            // SURGICAL FIX: Explicitly convert to UTC before saving
+            if (pessoaEmEdicao.Nascimento.HasValue)
+            {
+                pessoaEmEdicao.Nascimento = DateTime.SpecifyKind(pessoaEmEdicao.Nascimento.Value, DateTimeKind.Utc);
+            }
+
+            if (pessoaEmEdicao.Id == 0)
+            {
+                await PessoaService.AddAsync(pessoaEmEdicao);
+            }
+            else
+            {
+                await PessoaService.UpdateAsync(pessoaEmEdicao);
+            }
+            showPessoaModal = false;
+            await CarregarPessoas();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao salvar pessoa (Original): {ex.Message}");
+            
+            // Translate common errors
+            if (ex.Message.Contains("UTC") || (ex.InnerException?.Message.Contains("UTC") ?? false))
+            {
+                errorMessage = "Erro de fuso horário. A data de nascimento foi corrigida automaticamente. Tente salvar novamente.";
+            }
+            else if (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == "23505")
+            {
+                errorMessage = "Já existe uma pessoa cadastrada com este CPF.";
+            }
+            else
+            {
+                errorMessage = "Ocorreu um erro ao salvar os dados da pessoa. Verifique os campos e tente novamente.";
+                LogException(ex); // Only show details for unknown errors
+            }
+        }
+    }
+
+    private async Task DeletarPessoa(int id)
+    {
+        if (isReadOnly) return;
+        if (await JS.InvokeAsync<bool>("confirm", "Tem certeza que deseja excluir esta pessoa?"))
+        {
+            await PessoaService.DeleteAsync(id);
+            await CarregarPessoas();
+        }
+    }
+
+
+    // Veiculos Logic
+    private async Task CarregarVeiculos()
+    {
+        if (propriedade!.Id > 0)
+        {
+            veiculos = (await VeiculoService.GetByPropriedadeIdAsync(propriedade.Id)).ToList();
+        }
+    }
+
+    private void NovoVeiculo()
+    {
+        if (isReadOnly) return;
+        errorMessage = null;
+        veiculoEmEdicao = new Veiculo { PropriedadeId = propriedade!.Id };
+        showVeiculoModal = true;
+        isVehicleViewMode = false;
+    }
+
+    private void EditarVeiculo(Veiculo veiculo)
+    {
+        if (isReadOnly) return;
+        errorMessage = null;
+        veiculoEmEdicao = veiculo;
+        showVeiculoModal = true;
+        isVehicleViewMode = true;
+    }
+
+    private void FecharModalVeiculo()
+    {
+        showVeiculoModal = false;
+    }
+
+    private async Task SalvarVeiculo()
+    {
+        if (isReadOnly) return;
+        try
+        {
+            if (veiculoEmEdicao.Id == 0)
+            {
+                await VeiculoService.AddAsync(veiculoEmEdicao);
+            }
+            else
+            {
+                await VeiculoService.UpdateAsync(veiculoEmEdicao);
+            }
+            showVeiculoModal = false;
+            await CarregarVeiculos();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao salvar veículo: {ex.Message}";
+            LogException(ex);
+        }
+    }
+
+    private async Task DeletarVeiculo(int id)
+    {
+        if (isReadOnly) return;
+        if (await JS.InvokeAsync<bool>("confirm", "Tem certeza que deseja excluir este veículo?"))
+        {
+            await VeiculoService.DeleteAsync(id);
+            await CarregarVeiculos();
+        }
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        errorMessage = "Por favor, corrija os erros no formulário.";
+        JS.InvokeVoidAsync("window.scrollTo", new { top = 0, behavior = "smooth" });
+    }
+
+    private async Task ShowSuccessNotification()
+    {
+        errorMessage = null; 
+        showSuccessMessage = true;
+        // In a real app, use a Toast service
+        await JS.InvokeVoidAsync("alert", "Salvo com sucesso!");
+    }
+
+    // Map Integration
+    private void OpenMap()
+    {
+        locationPickerModal.Show(propriedade.Latitude, propriedade.Longitude);
+    }
+
+    private void HandleLocationSelected((decimal lat, decimal lon) location)
+    {
+        // Update inputs (which will be parsed on save)
+        latitudeInput = CoordinateHelper.ConvertToDms(location.lat, true);
+        longitudeInput = CoordinateHelper.ConvertToDms(location.lon, false);
+        
+        // Also update model directly
+        propriedade.Latitude = location.lat;
+        propriedade.Longitude = location.lon;
+
+        // Auto-generate Google Maps Link
+        propriedade.LinkRota = $"https://www.google.com/maps/dir/?api=1&destination={location.lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{location.lon.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        
+        StateHasChanged();
+    }
+
+    private async Task AdicionarCultivo()
+    {
+        if (selectedCultivoId > 0)
+        {
+             // Add to list
+             if (propriedade.Cultivos == null) propriedade.Cultivos = new List<PropriedadeCultivo>();
+             
+             // Check duplicate
+             if (propriedade.Cultivos.Any(pc => pc.CultivoId == selectedCultivoId)) return;
+
+             var cultivo = cropTypes.FirstOrDefault(c => c.Id == selectedCultivoId);
+
+             propriedade.Cultivos.Add(new PropriedadeCultivo 
+             { 
+                 PropriedadeId = propriedade.Id,
+                 CultivoId = selectedCultivoId,
+                 Cultivo = cultivo // For display
+             });
+             
+             selectedCultivoId = 0;
+        }
+    }
+
+    private async Task RemoverCultivo(PropriedadeCultivo pc)
+    {
+        propriedade.Cultivos.Remove(pc);
+    }
+    
+    private int selectedCultivoId = 0;
+
+    public void Dispose()
+    {
+        // cleanup if needed
+    }
+}

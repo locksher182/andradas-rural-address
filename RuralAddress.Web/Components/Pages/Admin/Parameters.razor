@@ -1,0 +1,154 @@
+@page "/admin/parametros"
+@using RuralAddress.Core.Entities
+@using RuralAddress.Core.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject ISystemParameterService SystemParameterService
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Cadastro de Parâmetros</PageTitle>
+
+<h1>Cadastro de Parâmetros</h1>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <label class="form-label">Grupo de Parâmetros</label>
+        <select class="form-select" @onchange="OnGroupChanged">
+            <option value="VehicleType">Tipos de Veículo</option>
+            <option value="CropType">Tipos de Cultivo</option>
+        </select>
+    </div>
+    <div class="col-md-8 text-end align-self-end">
+        <button class="btn btn-success" @onclick="NovoParametro">Novo Parâmetro</button>
+    </div>
+</div>
+
+@if (parameters == null)
+{
+    <p><em>Carregando...</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Ativo</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var param in parameters)
+            {
+                <tr>
+                    <td>@param.Name</td>
+                    <td>@(param.IsActive ? "Sim" : "Não")</td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" @onclick="() => EditarParametro(param)">Editar</button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeletarParametro(param.Id)">Excluir</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (showModal)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(parametroEmEdicao.Id == 0 ? "Novo Parâmetro" : "Editar Parâmetro")</h5>
+                    <button type="button" class="btn-close" @onclick="FecharModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="parametroEmEdicao" OnValidSubmit="SalvarParametro">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="mb-3">
+                            <label class="form-label">Nome</label>
+                            <InputText class="form-control" @bind-Value="parametroEmEdicao.Name" />
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <InputCheckbox class="form-check-input" @bind-Value="parametroEmEdicao.IsActive" id="isActive" />
+                            <label class="form-check-label" for="isActive">
+                                Ativo
+                            </label>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                        <button type="button" class="btn btn-secondary" @onclick="FecharModal">Cancelar</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private IEnumerable<SystemParameter>? parameters;
+    private string currentGroup = "VehicleType";
+    private SystemParameter parametroEmEdicao = new();
+    private bool showModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarParametros();
+    }
+
+    private async Task OnGroupChanged(ChangeEventArgs e)
+    {
+        currentGroup = e.Value?.ToString() ?? "VehicleType";
+        await CarregarParametros();
+    }
+
+    private async Task CarregarParametros()
+    {
+        parameters = await SystemParameterService.GetByGroupAllAsync(currentGroup);
+    }
+
+    private void NovoParametro()
+    {
+        parametroEmEdicao = new SystemParameter { Group = currentGroup, IsActive = true };
+        showModal = true;
+    }
+
+    private void EditarParametro(SystemParameter param)
+    {
+        parametroEmEdicao = param;
+        showModal = true;
+    }
+
+    private void FecharModal()
+    {
+        showModal = false;
+    }
+
+    private async Task SalvarParametro()
+    {
+        if (parametroEmEdicao.Id == 0)
+        {
+            await SystemParameterService.AddAsync(parametroEmEdicao);
+        }
+        else
+        {
+            await SystemParameterService.UpdateAsync(parametroEmEdicao);
+        }
+        showModal = false;
+        await CarregarParametros();
+    }
+
+    private async Task DeletarParametro(int id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Tem certeza que deseja excluir este parâmetro?"))
+        {
+            await SystemParameterService.DeleteAsync(id);
+            await CarregarParametros();
+        }
+    }
+}
