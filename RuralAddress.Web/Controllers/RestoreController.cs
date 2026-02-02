@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 namespace RuralAddress.Web.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/restore")]
     [ApiController]
     [Authorize(Roles = "Admin")]
     public class RestoreController : ControllerBase

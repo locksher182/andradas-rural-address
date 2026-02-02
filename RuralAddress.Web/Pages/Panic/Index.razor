@@ -1,0 +1,78 @@
+@page "/panic"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RuralAddress.Core.Entities
+@using RuralAddress.Infrastructure.Data
+@attribute [Authorize(Roles = "Admin,Gerente")]
+@inject AppDbContext Context
+@inject NavigationManager Navigation
+
+<PageTitle>Histórico de Alertas</PageTitle>
+
+<h1>Histórico de Alertas (Botão do Pânico)</h1>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Data/Hora</th>
+                <th>Morador</th>
+                <th>Localização</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Alerts == null)
+            {
+                <tr><td colspan="5">Carregando...</td></tr>
+            }
+            else if (!Alerts.Any())
+            {
+                <tr><td colspan="5">Nenhum alerta registrado.</td></tr>
+            }
+            else
+            {
+                @foreach (var alert in Alerts)
+                {
+                    <tr class="@(alert.Resolvido ? "" : "table-danger")">
+                        <td>@alert.DataHora.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</td>
+                        <td>@(alert.Pessoa?.Nome ?? "Removido")</td>
+                        <td>
+                            <a href="https://www.google.com/maps/search/?api=1&query=@alert.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture),@alert.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)" target="_blank">
+                                @alert.Latitude, @alert.Longitude
+                            </a>
+                        </td>
+                        <td>
+                            @if (alert.Resolvido)
+                            {
+                                <span class="badge bg-success">Resolvido</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Em Aberto</span>
+                            }
+                        </td>
+                        <td>
+                            <a href="/panic/details/@alert.Id" class="btn btn-primary btn-sm">
+                                <i class="fa-solid fa-eye"></i> Ver Chat
+                            </a>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<PanicAlert>? Alerts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Alerts = await Context.PanicAlerts
+            .Include(a => a.Pessoa)
+            .OrderByDescending(a => a.DataHora)
+            .ToListAsync();
+    }
+}

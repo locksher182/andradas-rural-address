@@ -1,0 +1,102 @@
+@page "/panic/details/{Id:int}"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using RuralAddress.Core.Entities
+@using RuralAddress.Infrastructure.Data
+@using Microsoft.JSInterop
+@attribute [Authorize(Roles = "Admin,Gerente")]
+@inject AppDbContext Context
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Detalhes do Alerta</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Detalhes do Alerta #@Id</h1>
+    <a href="/panic" class="btn btn-secondary">Voltar</a>
+</div>
+
+@if (Alert == null)
+{
+    <p>Carregando...</p>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            Informações do Evento
+        </div>
+        <div class="card-body">
+            <p><strong>Morador:</strong> @(Alert.Pessoa?.Nome ?? "Desconhecido")</p>
+            <p><strong>Data/Hora:</strong> @Alert.DataHora.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")</p>
+            <p><strong>Localização:</strong> 
+                <a href="https://www.google.com/maps/search/?api=1&query=@Alert.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture),@Alert.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)" target="_blank">
+                    Abrir no Maps (@Alert.Latitude, @Alert.Longitude)
+                </a>
+            </p>
+            <p><strong>Status:</strong> 
+                @(Alert.Resolvido ? "Resolvido" : "EM ABERTO")
+            </p>
+            
+            @if (!Alert.Resolvido)
+            {
+                <button class="btn btn-success" @onclick="MarkAsResolved">Marcar como Resolvido</button>
+            }
+        </div>
+    </div>
+
+    <h3>Transcrição do Chat</h3>
+    <div class="list-group">
+        @if (Alert.ChatMessages == null || !Alert.ChatMessages.Any())
+        {
+            <div class="list-group-item">Nenhuma mensagem trocada.</div>
+        }
+        else
+        {
+            @foreach (var msg in Alert.ChatMessages.OrderBy(m => m.DataHora))
+            {
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">@msg.Remetente</h5>
+                        <small>@msg.DataHora.ToLocalTime().ToString("HH:mm:ss")</small>
+                    </div>
+                    <p class="mb-1">@msg.Mensagem</p>
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private PanicAlert? Alert;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Alert = await Context.PanicAlerts
+            .Include(a => a.Pessoa)
+            .Include(a => a.ChatMessages)
+            .FirstOrDefaultAsync(a => a.Id == Id);
+
+        if (Alert == null)
+        {
+            // Navigation.NavigateTo("/panic"); 
+        }
+    }
+
+    private async Task MarkAsResolved()
+    {
+        if (Alert != null)
+        {
+            if (await JS.InvokeAsync<bool>("confirm", "Tem certeza que deseja marcar este caso como resolvido?"))
+            {
+                Alert.Resolvido = true;
+                await Context.SaveChangesAsync();
+                StateHasChanged();
+            }
+        }
+    }
+}

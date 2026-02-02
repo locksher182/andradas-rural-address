@@ -19,6 +19,8 @@ public class PropriedadeService : IPropriedadeService
         return await _context.Propriedades
             .Include(p => p.Pessoas)
             .Include(p => p.Veiculos)
+            .Include(p => p.Cultivos)
+                .ThenInclude(pc => pc.Cultivo)
             .OrderBy(p => p.CepRural)
             .ToListAsync();
     }
@@ -32,6 +34,8 @@ public class PropriedadeService : IPropriedadeService
         return await _context.Propriedades
             .Include(p => p.Pessoas)
             .Include(p => p.Veiculos)
+            .Include(p => p.Cultivos)
+                .ThenInclude(pc => pc.Cultivo)
             .Where(p => p.NomePropriedade.ToLower().Contains(term) ||
                         p.CepRural.ToLower().Contains(term) ||
                         p.Bairro.ToLower().Contains(term) ||

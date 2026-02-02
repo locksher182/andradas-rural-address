@@ -16,7 +16,7 @@
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column h-100">
+    <nav class="nav flex-column" style="min-height: 100%">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
                 <span class="fa-solid fa-house-chimney me-3" aria-hidden="true"></span> Home
@@ -49,55 +49,73 @@
             </div>
         </AuthorizeView>
 
-        <AuthorizeView Roles="Admin">
-            <div class="nav-item px-3">
-                <NavLink class="nav-link" href="admin/parametros">
-                    <span class="fa-solid fa-sliders me-3" aria-hidden="true"></span> Parâmetros
-                </NavLink>
-            </div>
-        </AuthorizeView>
-
         <div class="flex-grow-1"></div>
-
-        <AuthorizeView Roles="Admin">
-            <div class="nav-item px-3">
-                 <NavLink class="nav-link" href="admin/users">
-                     <span class="fa-solid fa-id-card me-3" aria-hidden="true"></span> Usuários do Sistema
-                 </NavLink>
-            </div>
-        </AuthorizeView>
 
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="change-password">
-                        <span class="fa-solid fa-key me-3" aria-hidden="true"></span> Trocar Senha
+                    <NavLink class="nav-link" @onclick="ToggleSettings" style="cursor: pointer">
+                        <span class="fa-solid fa-gear me-3" aria-hidden="true"></span> Configurações
+                        <span class="fa-solid @(expandSettings ? "fa-caret-down" : "fa-caret-left") ms-auto"></span>
                     </NavLink>
                 </div>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="logout">
-                        <span class="fa-solid fa-right-from-bracket me-3" aria-hidden="true"></span> Sair
-                    </NavLink>
-                    <div class="text-white small text-center pb-3">
-                        (@context.User.Identity?.Name)
-                        <AuthorizeView Roles="Admin" Context="adminContext">
-                            <div class="small text-warning mt-1" style="font-size: 0.75rem;">
-                                @lastBackupMessage
+
+                @if (expandSettings)
+                {
+                    <div class="bg-black bg-opacity-25 rounded mx-2 mb-3 pt-2">
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="mapa-dinamico">
+                                <span class="fa-solid fa-map-location-dot me-3" aria-hidden="true"></span> Mapa Dinâmico
+                            </NavLink>
+                        </div>
+                        <AuthorizeView Roles="Admin" Context="innerAdmin">
+                            <div class="nav-item px-3">
+                                <NavLink class="nav-link" href="admin/parametros">
+                                    <span class="fa-solid fa-sliders me-3" aria-hidden="true"></span> Parâmetros
+                                </NavLink>
                             </div>
 
                             <div class="nav-item px-3">
-                                <InputFile id="backupFileInput" OnChange="OnBackupFileSelected" hidden />
-                                <NavLink class="nav-link" href="javascript:void(0);" onclick="document.getElementById('backupFileInput').click();">
-                                    <span class="fa-solid fa-database me-3" aria-hidden="true"></span> Restaurar
+                                <NavLink class="nav-link" href="admin/users">
+                                    <span class="fa-solid fa-id-card me-3" aria-hidden="true"></span> Usuários
                                 </NavLink>
-                            </div>
-                            <div class="text-white-50 text-center mt-2" style="font-size: 0.65rem;">
-                                Ver: 2025.12.22.12
                             </div>
                         </AuthorizeView>
 
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="change-password">
+                                <span class="fa-solid fa-key me-3" aria-hidden="true"></span> Trocar Senha
+                            </NavLink>
+                        </div>
+                        <div class="nav-item px-3">
+                            <NavLink class="nav-link" href="logout">
+                                <span class="fa-solid fa-right-from-bracket me-3" aria-hidden="true"></span> Sair
+                            </NavLink>
+                        </div>
+
+                        <div class="text-white small text-center pb-3 pt-2 border-top border-secondary mt-2">
+                            <div class="text-truncate px-2" title="@context.User.Identity?.Name">
+                                (@context.User.Identity?.Name)
+                            </div>
+                            
+                            <AuthorizeView Roles="Admin" Context="innerAdmin2">
+                                <div class="small text-warning mt-1" style="font-size: 0.75rem;">
+                                    @lastBackupMessage
+                                </div>
+
+                                <div class="nav-item px-3 mt-1">
+                                    <InputFile id="backupFileInput" OnChange="OnBackupFileSelected" hidden />
+                                    <NavLink class="nav-link py-1" href="javascript:void(0);" onclick="document.getElementById('backupFileInput').click();">
+                                        <span class="fa-solid fa-database me-3" aria-hidden="true"></span> Restaurar
+                                    </NavLink>
+                                </div>
+                                <div class="text-white-50 text-center mt-2" style="font-size: 0.65rem;">
+                                    Ver: 2026.02.02.v1
+                                </div>
+                            </AuthorizeView>
+                        </div>
                     </div>
-                </div>
+                }
             </Authorized>
             <NotAuthorized>
                 <div class="nav-item px-3">
@@ -117,12 +135,18 @@
 
 @code {
     private bool collapseNavMenu = true;
+    private bool expandSettings = false; // Starts collapsed
     private string? lastBackupMessage = "Iniciando...";
     private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void ToggleSettings()
+    {
+        expandSettings = !expandSettings;
     }
 
     protected override void OnInitialized()

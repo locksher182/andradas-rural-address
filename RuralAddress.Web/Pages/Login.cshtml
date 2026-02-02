@@ -1,0 +1,79 @@
+@page "/login"
+@using System.ComponentModel.DataAnnotations
+@using RuralAddress.Core.Entities
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Mvc
+@attribute [IgnoreAntiforgeryToken]
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Login</div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Senha</label>
+                        <input type="password" name="password" class="form-control" id="loginPasswordInput" required />
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="showLoginPasswordCheck" onclick="toggleLoginPassword()">
+                        <label class="form-check-label" for="showLoginPasswordCheck">Mostrar senha</label>
+                    </div>
+
+                    <script>
+                        function toggleLoginPassword() {
+                            var passInput = document.getElementById('loginPasswordInput');
+                            var type = document.getElementById('showLoginPasswordCheck').checked ? 'text' : 'password';
+                            passInput.type = type;
+                        }
+                    </script>
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger">@ErrorMessage</div>
+                    }
+                    <button type="submit" class="btn btn-primary w-100">Entrar</button>
+                    <!-- Registro desabilitado -->
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    public string? ErrorMessage { get; set; }
+
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> OnPostAsync(string email, string password)
+    {
+        // Standardized error message
+        const string invalidLoginMessage = "Usuário ou senha incorretos.";
+
+        var user = await UserManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            ErrorMessage = invalidLoginMessage;
+            return Page();
+        }
+
+        var result = await SignInManager.PasswordSignInAsync(email, password, isPersistent: false, lockoutOnFailure: false);
+
+        if (result.Succeeded)
+        {
+            user.LastAccessDate = DateTime.UtcNow;
+            await UserManager.UpdateAsync(user);
+            return LocalRedirect("/");
+        }
+        else
+        {
+            ErrorMessage = invalidLoginMessage;
+            return Page();
+        }
+    }
+}

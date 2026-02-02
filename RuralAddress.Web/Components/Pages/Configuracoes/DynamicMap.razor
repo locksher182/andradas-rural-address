@@ -1,0 +1,256 @@
+@page "/mapa-dinamico"
+@using RuralAddress.Core.Entities
+@using RuralAddress.Core.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@using System.Collections.Generic
+@using System.Linq
+@inject IPropriedadeService PropriedadeService
+@inject IJSRuntime JS
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Mapa Dinâmico</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Mapa Dinâmico</h1>
+    <a href="/" class="btn btn-secondary">Voltar</a>
+</div>
+
+<!-- Filter Section -->
+<div class="card shadow-sm border-0 mb-4 bg-white">
+    <div class="card-body">
+        <h5 class="card-title mb-3"><i class="fa-solid fa-filter me-2"></i>Filtros Avançados</h5>
+        
+        <div class="filter-container">
+            @for (int i = 0; i < Filters.Count; i++)
+            {
+                var index = i; // local copy for closure
+                <div class="row align-items-center mb-2 g-2">
+                    <div class="col-md-3">
+                        <select class="form-select form-select-sm" @bind="Filters[index].Field">
+                            <option value="None">Selecione...</option>
+                            <option value="Setor">Setor</option>
+                            <option value="Cultura">Cultura</option>
+                        </select>
+                    </div>
+
+                    @if (Filters[index].Field != "None")
+                    {
+                        <div class="col-md-3">
+                            <select class="form-select form-select-sm" @bind="Filters[index].Operator">
+                                <option value="Equal">Igual a</option>
+                                <option value="NotEqual">Diferente de</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            @if (Filters[index].Field == "Setor")
+                            {
+                                <select class="form-select form-select-sm" @bind="Filters[index].Value">
+                                    <option value="">Selecione...</option>
+                                    <option value="All">Todos os Setores</option>
+                                    @for (int s = 1; s <= 14; s++)
+                                    {
+                                        <option value="@s.ToString()">Setor @s</option>
+                                    }
+                                </select>
+                            }
+                            else if (Filters[index].Field == "Cultura")
+                            {
+                                <select class="form-select form-select-sm" @bind="Filters[index].Value">
+                                    <option value="">Selecione...</option>
+                                    @foreach (var cultura in AvailableCultures)
+                                    {
+                                        <option value="@cultura">@cultura</option>
+                                    }
+                                </select>
+                            }
+                        </div>
+                    }
+                    else 
+                    {
+                        <div class="col-md-6 text-muted small pt-1">
+                            (Sem filtro aplicado nesta linha)
+                        </div>
+                    }
+
+                </div>
+
+                @if (i < Filters.Count - 1)
+                {
+                   <div class="row mb-2">
+                       <div class="col-md-2 offset-md-5 text-center">
+                           <select class="form-select form-select-sm border-2 border-secondary bg-light fw-bold text-center" @bind="Connectors[index]">
+                               <option value="AND">E</option>
+                               <option value="OR">OU</option>
+                           </select>
+                       </div>
+                   </div>
+                }
+            }
+        </div>
+
+        <div class="mt-3 text-end">
+             <button class="btn btn-primary" @onclick="ApplyFilters">
+                 <i class="fa-solid fa-check me-2"></i>Aplicar Filtros
+             </button>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div id="dynamicMap" style="height: 600px; width: 100%;"></div>
+    </div>
+</div>
+
+@code {
+    private List<Propriedade> allPropriedades = new();
+    private List<string> AvailableCultures = new();
+
+    public class FilterRow
+    {
+        public string Field { get; set; } = "None";
+        public string Operator { get; set; } = "Equal";
+        public string Value { get; set; } = "";
+    }
+
+    private List<FilterRow> Filters = new List<FilterRow>
+    {
+        new FilterRow(),
+        new FilterRow(),
+        new FilterRow()
+    };
+
+    // Connectors between 0-1 and 1-2
+    private List<string> Connectors = new List<string> { "AND", "AND" };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try 
+        {
+            var result = await PropriedadeService.GetAllAsync();
+            allPropriedades = result.ToList();
+            
+            // Extract distinct cultures
+            AvailableCultures = allPropriedades
+                .SelectMany(p => p.Cultivos)
+                .Select(c => c.Cultivo?.Name) // Assuming 'Value' is the name in SystemParameter
+                .Where(c => !string.IsNullOrEmpty(c))
+                .Distinct()
+                .OrderBy(c => c)
+                .ToList() ?? new List<string>();
+
+            // Initial Load with all data (or no filters applied)
+            await UpdateMap(allPropriedades);
+            StateHasChanged();
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+    }
+
+    private async Task ApplyFilters()
+    {
+        var filteredList = new List<Propriedade>();
+
+        foreach (var p in allPropriedades)
+        {
+            bool? runningResult = null;
+
+            // Row 0
+            if (Filters[0].Field != "None") 
+            {
+                 runningResult = EvaluateRow(p, Filters[0]);
+            }
+
+            // Row 1
+            if (Filters[1].Field != "None") 
+            {
+                 bool val = EvaluateRow(p, Filters[1]);
+                 if (runningResult.HasValue) 
+                     runningResult = Combine(runningResult.Value, val, Connectors[0]);
+                 else
+                     runningResult = val;
+            }
+
+            // Row 2
+            if (Filters[2].Field != "None") 
+            {
+                 bool val = EvaluateRow(p, Filters[2]);
+                 if (runningResult.HasValue) 
+                     runningResult = Combine(runningResult.Value, val, Connectors[1]);
+                 else
+                     runningResult = val;
+            }
+
+            // If runningResult is null (no filters active), default to true (show all).
+            if (runningResult ?? true) 
+            {
+                filteredList.Add(p);
+            }
+        }
+
+        await UpdateMap(filteredList);
+    }
+
+    private bool EvaluateRow(Propriedade p, FilterRow filter)
+    {
+        if (filter.Field == "None") return true; 
+        if (string.IsNullOrEmpty(filter.Value)) return true; // Ignore incompletes
+
+        bool match = false;
+
+        if (filter.Field == "Setor")
+        {
+            if (filter.Value == "All") return true; // Special logic for All Sectors
+
+            if (int.TryParse(filter.Value, out int setorVal))
+            {
+                match = (p.Setor == setorVal);
+            }
+        }
+        else if (filter.Field == "Cultura")
+        {
+            // Check if ANY of the crops match
+            match = p.Cultivos.Any(c => c.Cultivo != null && 
+                                        c.Cultivo.Name.Equals(filter.Value, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Apply Operator
+        return (filter.Operator == "Equal") ? match : !match;
+    }
+
+    private bool Combine(bool left, bool right, string connector)
+    {
+        return (connector == "AND") ? (left && right) : (left || right);
+    }
+
+    private async Task UpdateMap(List<Propriedade> data)
+    {
+        var mapData = data.Select(p => new {
+            p.NomePropriedade,
+            p.Latitude,
+            p.Longitude,
+            p.Setor,
+            nome = p.NomePropriedade
+        }).ToList();
+
+        try 
+        {
+            await JS.InvokeVoidAsync("dynamicMap.initMap", "dynamicMap", mapData);
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine("JS Error: " + ex.Message);
+        }
+    }
+}

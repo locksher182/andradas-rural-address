@@ -123,11 +123,28 @@
     }
 
     .nav-scrollable {
-        /* Never collapse the sidebar for wide screens */
-        display: block;
-
         /* Allow sidebar to scroll for tall menus */
         height: calc(100vh - 3.5rem);
         overflow-y: auto;
+        overflow-x: hidden;
+        display: block;
+        /* Safer for scrolling containers */
+
+        /* Thin Scrollbar */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.5) transparent;
+    }
+
+    .nav-scrollable::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .nav-scrollable::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .nav-scrollable::-webkit-scrollbar-thumb {
+        background-color: rgba(255, 255, 255, 0.5);
+        border-radius: 20px;
     }
 }
