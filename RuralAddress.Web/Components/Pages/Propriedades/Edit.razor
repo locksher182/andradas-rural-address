@@ -59,9 +59,21 @@ else
 
                     <EditForm Model="propriedade" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit">
                     <DataAnnotationsValidator />
-                    <ValidationSummary />
+    @if (showErrorSummary)
+    {
+        <div class="floating-alert @(isFadingOut ? "fading-out" : "")">
+             <div class="alert-content">
+                  <h4 class="alert-title">Oops! Algo deu errado</h4>
+                  <div class="alert-messages">
+                       <ValidationSummary />
+                  </div>
+             </div>
+             <button class="btn-close-absolute" @onclick="CloseAlert">×</button>
+        </div>
+    }
 
                     <div class="mb-3">
+<ValidationMessage For="@(() => propriedade.NomePropriedade)" />
                         <label for="nome" class="form-label">Nome da Propriedade</label>
                         <input type="text" class="form-control" @bind="propriedade.NomePropriedade" disabled="@(isReadOnly || isViewMode)" />
                     </div>
@@ -83,12 +95,14 @@ else
                     </div>
 
                     <div class="mb-3">
+<ValidationMessage For="@(() => propriedade.CepRural)" />
                         <label for="cep" class="form-label">CEP Rural</label>
                         <input type="text" class="form-control" @bind="propriedade.CepRural" placeholder="A00-0000" disabled="@(isReadOnly || isViewMode)" />
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3 d-flex flex-column justify-content-end">
+                            <ValidationMessage For="@(() => propriedade.Setor)" />
                             <label for="setor" class="form-label">Setor</label>
                             <select id="setor" class="form-select" @bind="propriedade.Setor" disabled="@(isReadOnly || isViewMode)">
                                 <option value="0">Selecione...</option>
@@ -98,27 +112,29 @@ else
                                 }
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-3 d-flex flex-column justify-content-end">
+                            <ValidationMessage For="@(() => propriedade.Bairro)" />
                             <label for="bairro" class="form-label">Bairro</label>
                             <input type="text" class="form-control" @bind="propriedade.Bairro" disabled="@(isReadOnly || isViewMode)" />
                         </div>
                     </div>
 
                     <div class="mb-3">
+<ValidationMessage For="@(() => propriedade.Complemento)" />
                         <label for="complemento" class="form-label">Complemento</label>
                         <input type="text" class="form-control" @bind="propriedade.Complemento" disabled="@(isReadOnly || isViewMode)" />
                     </div>
 
                     <div class="row">
-                        <div class="col-md-5 mb-3">
+                        <div class="col-md-5 mb-3 d-flex flex-column justify-content-end">
                             <label for="latitude" class="form-label">Latitude (ex: S 22° 10' 52.3")</label>
                             <input type="text" id="latitude" class="form-control" @bind="latitudeInput" placeholder="S 00° 00' 00.0&quot;" disabled="@(isReadOnly || isViewMode)" />
                         </div>
-                        <div class="col-md-5 mb-3">
+                        <div class="col-md-5 mb-3 d-flex flex-column justify-content-end">
                             <label for="longitude" class="form-label">Longitude (ex: W 046° 31' 54.7")</label>
                             <input type="text" id="longitude" class="form-control" @bind="longitudeInput" placeholder="W 000° 00' 00.0&quot;" disabled="@(isReadOnly || isViewMode)" />
                         </div>
-                        <div class="col-md-2 mb-3 d-flex align-items-end">
+                        <div class="col-md-2 mb-3 d-flex flex-column justify-content-end">
                              <button type="button" class="btn btn-info w-100" @onclick="OpenMap" disabled="@(isReadOnly || isViewMode)">
                                 <i class="fas fa-map-marker-alt me-2"></i>Ver no Mapa
                             </button>
@@ -183,22 +199,24 @@ else
                         <textarea id="observacoes" class="form-control" @bind="propriedade.Observacoes" disabled="@(isReadOnly || isViewMode)"></textarea>
                     </div>
 
-                    @if (!isReadOnly)
-                    {
-                        @if (isViewMode)
+                    <div class="d-flex gap-2 mt-4">
+                        @if (!isReadOnly)
                         {
-                            <button type="button" class="btn btn-primary" @onclick="@(() => isViewMode = false)">Editar</button>
-                        }
-                        else
-                        {
-                            <button type="submit" class="btn btn-primary">Salvar</button>
-                            @if (propriedade.Id > 0)
+                            @if (isViewMode)
                             {
-                                <button type="button" class="btn btn-secondary" @onclick="@(() => isViewMode = true)">Cancelar Edição</button>
+                                <button type="button" class="btn btn-primary d-inline-flex align-items-center justify-content-center" @onclick="@(() => isViewMode = false)">Editar</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-primary d-inline-flex align-items-center justify-content-center">Salvar</button>
+                                @if (propriedade.Id > 0)
+                                {
+                                    <button type="button" class="btn btn-secondary d-inline-flex align-items-center justify-content-center" @onclick="@(() => isViewMode = true)">Cancelar Edição</button>
+                                }
                             }
                         }
-                    }
-                    <a href="/propriedades" class="btn btn-secondary">Voltar</a>
+                        <a href="/propriedades" class="btn btn-secondary d-inline-flex align-items-center justify-content-center">Voltar</a>
+                    </div>
                 </EditForm>
             }
             else if (activeTab == "pessoas" && canViewDetails)
@@ -649,6 +667,10 @@ else
         }
     }
 
+    private bool showErrorSummary = false;
+    private bool isFadingOut = false;
+    private CancellationTokenSource? errorTimerCts;
+
     private void AddMessage(string message)
     {
         // Simple message handler, can be enhanced with a toast or similar
@@ -663,8 +685,44 @@ else
         activeTab = tabName;
     }
 
+    private async Task HandleInvalidSubmit()
+    {
+        showErrorSummary = true;
+        isFadingOut = false;
+        // Scroll to top
+        await JS.InvokeVoidAsync("window.scrollTo", new { top = 0, behavior = "smooth" });
+        
+        // Cancel previous timer if exists
+        errorTimerCts?.Cancel();
+        errorTimerCts = new CancellationTokenSource();
+        
+        try 
+        {
+            await Task.Delay(5000, errorTimerCts.Token);
+            await CloseAlert();
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignore if cancelled
+        }
+    }
+
+    private async Task CloseAlert()
+    {
+        if (showErrorSummary)
+        {
+            isFadingOut = true;
+            StateHasChanged();
+            await Task.Delay(500); // Wait for animation
+            showErrorSummary = false;
+            isFadingOut = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task HandleValidSubmit()
     {
+        showErrorSummary = false; 
         if (isReadOnly) return;
 
         errorMessage = null;
@@ -919,11 +977,7 @@ else
         }
     }
 
-    private void HandleInvalidSubmit()
-    {
-        errorMessage = "Por favor, corrija os erros no formulário.";
-        JS.InvokeVoidAsync("window.scrollTo", new { top = 0, behavior = "smooth" });
-    }
+
 
     private async Task ShowSuccessNotification()
     {
@@ -987,6 +1041,7 @@ else
 
     public void Dispose()
     {
-        // cleanup if needed
+        errorTimerCts?.Cancel();
+        errorTimerCts?.Dispose();
     }
 }

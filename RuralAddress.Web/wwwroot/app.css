@@ -183,13 +183,18 @@ h1:focus-visible {
 }
 
 .btn-telegram:hover {
+    background-color: #1b8dbf;
+    border-color: #1b8dbf;
+    color: white;
+}
 
 /* Blazor Error UI - Default Hidden */
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;
     box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
-    display: none; /* Critical: Hide by default */
+    display: none;
+    /* Critical: Hide by default */
     left: 0;
     padding: 0.6rem 1.25rem 0.7rem 1.25rem;
     position: fixed;
@@ -202,4 +207,119 @@ h1:focus-visible {
     position: absolute;
     right: 0.75rem;
     top: 0.5rem;
+}
+
+/* Validation Messages - Strict Styling */
+.validation-message {
+    color: #842029 !important;
+    background-color: #f8d7da !important;
+    border: 1px solid #f5c2c7 !important;
+    border-radius: 0.25rem !important;
+    padding: 0.75rem 1rem !important;
+    /* 12px-16px */
+    margin-bottom: 0.5rem !important;
+    display: block !important;
+    font-size: 0.875rem !important;
+    position: relative !important;
+}
+
+/* Floating Alert Summary - Senior UI/UX */
+.floating-alert {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 9999;
+    background-color: #FFF5F5;
+    /* Extremely light red */
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    /* Subtle border */
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    /* Soft shadow */
+    max-width: 420px;
+    width: 100%;
+    animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: 'Inter', sans-serif;
+}
+
+.floating-alert.fading-out {
+    animation: fadeOut 0.5s ease-out forwards;
+}
+
+/* Alert Title */
+.alert-title {
+    color: #9B2C2C;
+    /* Desaturated Wine */
+    font-weight: 700;
+    font-size: 1.125rem;
+    margin: 0 0 1rem 0;
+    line-height: 1.4;
+}
+
+/* Inner Card for Messages */
+.alert-messages {
+    background-color: rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.alert-messages ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: #374151;
+    /* Gray 700 */
+    font-size: 0.95rem;
+}
+
+.alert-messages li {
+    margin-bottom: 0.25rem;
+}
+
+
+
+/* Close X */
+.btn-close-absolute {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: transparent;
+    border: none;
+    color: #9B2C2C;
+    font-size: 1.25rem;
+    cursor: pointer;
+    opacity: 0.4;
+    padding: 0;
+    line-height: 1;
+    transition: opacity 0.2s;
+}
+
+.btn-close-absolute:hover {
+    opacity: 1;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
 }
