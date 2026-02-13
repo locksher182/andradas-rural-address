@@ -26,11 +26,11 @@ public class PlacaValidationAttribute : ValidationAttribute
         // )          : End group
         // $          : End of string
 
-        var regex = new Regex(@"^[A-Z]{3}-(\d{4}|\d[A-Z]\d{2})$");
+        var regex = new Regex(@"^[A-Z]{3}-[0-9][0-9A-Z][0-9]{2}$");
 
-        if (!regex.IsMatch(placa))
+        if (placa.Length != 8 || !regex.IsMatch(placa))
         {
-            return new ValidationResult("A placa deve estar no formato LLL-NNNN ou LLL-NLNN (Onde L= Letra e N=Número).");
+            return new ValidationResult("A placa deve estar no formato LLL-NNNN ou LLL-NLNN (ex: ABC-1234 ou ABC-1D23).");
         }
 
         return ValidationResult.Success;

@@ -65,12 +65,14 @@
                                 }
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary" @onclick="() => EditRole(user)">
-                                    <i class="bi bi-pencil"></i> Alterar Função
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger ms-2" @onclick="() => ConfirmDelete(user)" disabled="@(user.UserName == currentUserName)">
-                                    <i class="bi bi-trash"></i> Excluir
-                                </button>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center" style="height: 32px;" @onclick="() => EditRole(user)">
+                                        <i class="bi bi-pencil me-1"></i> Alterar Função
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center" style="height: 32px;" @onclick="() => ConfirmDelete(user)" disabled="@(user.UserName == currentUserName)">
+                                        <i class="bi bi-trash me-1"></i> Excluir
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     }

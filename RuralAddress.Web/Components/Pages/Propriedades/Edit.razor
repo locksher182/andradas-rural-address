@@ -140,6 +140,11 @@ else
                             </button>
                         </div>
                     </div>
+
+                    <div class="mb-3">
+                        <label for="areaTotal" class="form-label">Área Total (Hectares)</label>
+                        <input type="text" id="areaTotal" class="form-control" @bind="areaTotalInput" placeholder="0,00" disabled="@(isReadOnly || isViewMode)" />
+                    </div>
                     
                     <div class="mb-3">
                         <label for="linkRota" class="form-label">Link da Rota (Google Maps)</label>
@@ -192,6 +197,69 @@ else
                                 <button type="button" class="btn btn-primary" @onclick="AdicionarCultivo" disabled="@(selectedCultivoId == 0)">Adicionar</button>
                             </div>
                         }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Produção de Valor Agregado</label>
+                        
+                        @if (propriedade.ValoresAgregados != null && propriedade.ValoresAgregados.Any())
+                        {
+                            <ul class="list-group mb-2">
+                        @foreach (var pva in propriedade.ValoresAgregados)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                @pva.ValorAgregado?.Name
+                                @if (!isReadOnly && !isViewMode)
+                                {
+                                    <button type="button" class="btn btn-sm btn-danger" @onclick="async () => await RemoverValorAgregado(pva)">Remover</button>
+                                }
+                            </li>
+                        }
+                            </ul>
+                        }
+
+                        @if (!isReadOnly && !isViewMode)
+                        {
+                            <div class="input-group">
+                                <select class="form-select" @bind="selectedValueAddedId">
+                                    <option value="0">Selecione uma opção...</option>
+                                    @if (valueAddedTypes != null)
+                                    {
+                                        @foreach (var type in valueAddedTypes)
+                                        {
+                                            // Only show types not already added
+                                            @if (!propriedade.ValoresAgregados.Any(pva => pva.ValorAgregadoId == type.Id))
+                                            {
+                                                <option value="@type.Id">@type.Name</option>
+                                            }
+                                        }
+                                    }
+                                </select>
+                                <button type="button" class="btn btn-primary" @onclick="AdicionarValorAgregado" disabled="@(selectedValueAddedId == 0)">Adicionar</button>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Quem trabalha na propriedade</label>
+                        <div class="card p-3">
+                            @if (workforceTypes != null)
+                            {
+                                @foreach (var item in workforceTypes)
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="workforce_@item.Id" 
+                                               checked="@(IsWorkforceSelected(item.Id))" 
+                                               @onchange="@(e => ToggleWorkforce(item.Id, e.Value))"
+                                               disabled="@(isReadOnly || isViewMode)" />
+                                        <label class="form-check-label" for="workforce_@item.Id">
+                                            @item.Name
+                                        </label>
+                                    </div>
+                                }
+                            }
+                            
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -258,10 +326,16 @@ else
                                     <td>@pessoa.Cpf</td>
                                     @if (!isReadOnly)
                                     {
-                                        <td>
-                                            <button class="btn btn-sm btn-primary" @onclick="() => EditarPessoa(pessoa)">Editar</button>
-                                            <button class="btn btn-sm btn-danger" @onclick="() => DeletarPessoa(pessoa.Id)">Excluir</button>
-                                        </td>
+                                            <td>
+                                            <div class="d-flex gap-2">
+                                                <button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center" style="height: 32px;" @onclick="() => EditarPessoa(pessoa)">
+                                                    <i class="bi bi-pencil me-1"></i> Editar
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center" style="height: 32px;" @onclick="() => DeletarPessoa(pessoa.Id)">
+                                                    <i class="bi bi-trash me-1"></i> Excluir
+                                                </button>
+                                            </div>
+                                            </td>
                                     }
                                 </tr>
                             }
@@ -311,10 +385,16 @@ else
                                     <td>@veiculo.Placa</td>
                                     @if (!isReadOnly)
                                     {
-                                        <td>
-                                            <button class="btn btn-sm btn-primary" @onclick="() => EditarVeiculo(veiculo)">Editar</button>
-                                            <button class="btn btn-sm btn-danger" @onclick="() => DeletarVeiculo(veiculo.Id)">Excluir</button>
-                                        </td>
+                                            <td>
+                                            <div class="d-flex gap-2">
+                                                <button class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center" style="height: 32px;" @onclick="() => EditarVeiculo(veiculo)">
+                                                    <i class="bi bi-pencil me-1"></i> Editar
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center" style="height: 32px;" @onclick="() => DeletarVeiculo(veiculo.Id)">
+                                                    <i class="bi bi-trash me-1"></i> Excluir
+                                                </button>
+                                            </div>
+                                            </td>
                                     }
                                 </tr>
                             }
@@ -369,6 +449,14 @@ else
                             <div class="mb-3">
                                 <label class="form-label">Data de Nascimento</label>
                                 <input type="date" class="form-control" @bind="pessoaEmEdicao.Nascimento" disabled="@(isPersonViewMode)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Telefone</label>
+                                <input type="text" id="telefoneInput" class="form-control" @bind="pessoaEmEdicao.Telefone" disabled="@(isPersonViewMode)" placeholder="(99) 99999-9999" maxlength="15" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Trabalho (Outro)</label>
+                                <input type="text" class="form-control" @bind="pessoaEmEdicao.TrabalhoOutro" disabled="@(isPersonViewMode)" />
                             </div>
 
                             <AuthorizeView Roles="Admin" Context="adminContext">
@@ -493,6 +581,8 @@ else
     // Parameters
     private IEnumerable<SystemParameter>? vehicleTypes;
     private IEnumerable<SystemParameter>? cropTypes;
+    private IEnumerable<SystemParameter>? valueAddedTypes;
+    private IEnumerable<SystemParameter>? workforceTypes;
 
     // Pessoas
     private List<Pessoa>? pessoas;
@@ -512,6 +602,9 @@ else
     // DMS Inputs
     private string? latitudeInput;
     private string? longitudeInput;
+    
+    // Area Input
+    private string? areaTotalInput;
 
     private LocationPickerModal locationPickerModal;
 
@@ -595,6 +688,8 @@ else
 
             vehicleTypes = await SystemParameterService.GetByGroupAsync("VehicleType");
             cropTypes = await SystemParameterService.GetByGroupAsync("CropType");
+            valueAddedTypes = await SystemParameterService.GetByGroupAsync("ValueAddedProduction");
+            workforceTypes = await SystemParameterService.GetByGroupAsync("WorkforceType");
             Console.WriteLine("Edit.razor: System parameters loaded");
         }
         catch (Exception ex)
@@ -635,6 +730,16 @@ else
                     // Initialize DMS inputs
                     latitudeInput = CoordinateHelper.ConvertToDms(propriedade.Latitude, true);
                     longitudeInput = CoordinateHelper.ConvertToDms(propriedade.Longitude, false);
+                    
+                    // Initialize Area Input
+                    if (propriedade.AreaTotal.HasValue)
+                    {
+                        areaTotalInput = propriedade.AreaTotal.Value.ToString("F2");
+                    }
+                    else
+                    {
+                        areaTotalInput = string.Empty;
+                    }
 
                 }
             }
@@ -740,6 +845,28 @@ else
                     propriedade.Longitude = CoordinateHelper.ConvertToDecimal(longitudeInput);
                 else 
                     propriedade.Longitude = null;
+                    
+                // Parse Area
+                if (!string.IsNullOrWhiteSpace(areaTotalInput))
+                {
+                    // Remove dots (thousands separator if any) and replace comma with dot for invariant parsing
+                    // OR better: use current culture, but ensure comma is handled as decimal separator
+                    // Simple approach for Brazilian format "NN,NN": replace comma with dot, then parse invariant
+                    
+                    var normalizedArea = areaTotalInput.Replace(".", "").Replace(",", ".");
+                    if (double.TryParse(normalizedArea, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double area))
+                    {
+                        propriedade.AreaTotal = area;
+                    }
+                    else
+                    {
+                         throw new FormatException("O formato da Área Total é inválido. Use vírgula para decimais (ex: 12,50).");
+                    }
+                }
+                else
+                {
+                    propriedade.AreaTotal = null;
+                }
             }
             catch (FormatException fex)
             {
@@ -1036,8 +1163,91 @@ else
     {
         propriedade.Cultivos.Remove(pc);
     }
+
+    private async Task AdicionarValorAgregado()
+    {
+        if (selectedValueAddedId > 0)
+        {
+             // Add to list
+             if (propriedade.ValoresAgregados == null) propriedade.ValoresAgregados = new List<PropriedadeValorAgregado>();
+             
+             // Check duplicate
+             if (propriedade.ValoresAgregados.Any(pva => pva.ValorAgregadoId == selectedValueAddedId)) return;
+
+             var valorAgregado = valueAddedTypes.FirstOrDefault(c => c.Id == selectedValueAddedId);
+
+             propriedade.ValoresAgregados.Add(new PropriedadeValorAgregado 
+             { 
+                 PropriedadeId = propriedade.Id,
+                 ValorAgregadoId = selectedValueAddedId,
+                 ValorAgregado = valorAgregado 
+             });
+             
+             selectedValueAddedId = 0;
+        }
+    }
+
+    private async Task RemoverValorAgregado(PropriedadeValorAgregado pva)
+    {
+        propriedade.ValoresAgregados.Remove(pva);
+    }
     
     private int selectedCultivoId = 0;
+    private int selectedValueAddedId = 0;
+
+    // Workforce Logic
+    private bool IsWorkforceSelected(int typeId)
+    {
+        if (propriedade.TiposTrabalho == null) return false;
+        return propriedade.TiposTrabalho.Any(t => t.TipoTrabalhoId == typeId);
+    }
+
+    private void ToggleWorkforce(int typeId, object? checkedValue)
+    {
+        if (isReadOnly || isViewMode) return;
+        
+        bool isChecked = (bool)(checkedValue ?? false);
+        
+        if (propriedade.TiposTrabalho == null) propriedade.TiposTrabalho = new List<PropriedadeTipoTrabalho>();
+
+        if (isChecked)
+        {
+            if (!propriedade.TiposTrabalho.Any(t => t.TipoTrabalhoId == typeId))
+            {
+                var type = workforceTypes?.FirstOrDefault(t => t.Id == typeId);
+                propriedade.TiposTrabalho.Add(new PropriedadeTipoTrabalho 
+                { 
+                    PropriedadeId = propriedade.Id, 
+                    TipoTrabalhoId = typeId,
+                    TipoTrabalho = type
+                });
+            }
+        }
+        else
+        {
+            var item = propriedade.TiposTrabalho.FirstOrDefault(t => t.TipoTrabalhoId == typeId);
+            if (item != null)
+            {
+                propriedade.TiposTrabalho.Remove(item);
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (showPessoaModal && !isPersonViewMode)
+        {
+            try 
+            {
+                await JS.InvokeVoidAsync("masks.applyPhoneMask", "telefoneInput");
+            }
+            catch (Exception ex)
+            {
+                // Ignore JS errors during modal transitions
+                Console.WriteLine($"JS Error: {ex.Message}");
+            }
+        }
+    }
 
     public void Dispose()
     {

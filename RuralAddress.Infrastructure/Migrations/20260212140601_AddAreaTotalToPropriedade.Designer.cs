@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using RuralAddress.Infrastructure.Data;
@@ -11,9 +12,11 @@ using RuralAddress.Infrastructure.Data;
 namespace RuralAddress.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260212140601_AddAreaTotalToPropriedade")]
+    partial class AddAreaTotalToPropriedade
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -362,10 +365,6 @@ namespace RuralAddress.Infrastructure.Migrations
                     b.Property<bool>("TemBotaoPanico")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("TrabalhoOutro")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
                     b.HasKey("Id");
 
                     b.HasIndex("PropriedadeId");
@@ -456,52 +455,6 @@ namespace RuralAddress.Infrastructure.Migrations
                     b.ToTable("PropriedadeCultivos");
                 });
 
-            modelBuilder.Entity("RuralAddress.Core.Entities.PropriedadeTipoTrabalho", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("PropriedadeId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TipoTrabalhoId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PropriedadeId");
-
-                    b.HasIndex("TipoTrabalhoId");
-
-                    b.ToTable("PropriedadeTiposTrabalho");
-                });
-
-            modelBuilder.Entity("RuralAddress.Core.Entities.PropriedadeValorAgregado", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("PropriedadeId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ValorAgregadoId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PropriedadeId");
-
-                    b.HasIndex("ValorAgregadoId");
-
-                    b.ToTable("PropriedadeValoresAgregados");
-                });
-
             modelBuilder.Entity("RuralAddress.Core.Entities.SystemParameter", b =>
                 {
                     b.Property<int>("Id")
@@ -526,64 +479,6 @@ namespace RuralAddress.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SystemParameters");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 100,
-                            Group = "ValueAddedProduction",
-                            IsActive = true,
-                            Name = "CAFÉ TORRADO"
-                        },
-                        new
-                        {
-                            Id = 101,
-                            Group = "ValueAddedProduction",
-                            IsActive = true,
-                            Name = "PROCESSAMENTO DE PRODUTOS"
-                        },
-                        new
-                        {
-                            Id = 102,
-                            Group = "ValueAddedProduction",
-                            IsActive = true,
-                            Name = "PRODUÇÃO DE QUEIJOS E/OU DERIVADOS"
-                        },
-                        new
-                        {
-                            Id = 103,
-                            Group = "ValueAddedProduction",
-                            IsActive = true,
-                            Name = "CERTIFICAÇÕES E SELOS DE QUALIDADE"
-                        },
-                        new
-                        {
-                            Id = 200,
-                            Group = "WorkforceType",
-                            IsActive = true,
-                            Name = "FAMÍLIA"
-                        },
-                        new
-                        {
-                            Id = 201,
-                            Group = "WorkforceType",
-                            IsActive = true,
-                            Name = "MEEIROS/ARRENDATÁRIOS"
-                        },
-                        new
-                        {
-                            Id = 202,
-                            Group = "WorkforceType",
-                            IsActive = true,
-                            Name = "FUNCIONÁRIOS FIXOS"
-                        },
-                        new
-                        {
-                            Id = 203,
-                            Group = "WorkforceType",
-                            IsActive = true,
-                            Name = "FUNCIONÁRIOS EVENTUALMENTE"
-                        });
                 });
 
             modelBuilder.Entity("RuralAddress.Core.Entities.Veiculo", b =>
@@ -741,44 +636,6 @@ namespace RuralAddress.Infrastructure.Migrations
                     b.Navigation("Propriedade");
                 });
 
-            modelBuilder.Entity("RuralAddress.Core.Entities.PropriedadeTipoTrabalho", b =>
-                {
-                    b.HasOne("RuralAddress.Core.Entities.Propriedade", "Propriedade")
-                        .WithMany("TiposTrabalho")
-                        .HasForeignKey("PropriedadeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("RuralAddress.Core.Entities.SystemParameter", "TipoTrabalho")
-                        .WithMany()
-                        .HasForeignKey("TipoTrabalhoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Propriedade");
-
-                    b.Navigation("TipoTrabalho");
-                });
-
-            modelBuilder.Entity("RuralAddress.Core.Entities.PropriedadeValorAgregado", b =>
-                {
-                    b.HasOne("RuralAddress.Core.Entities.Propriedade", "Propriedade")
-                        .WithMany("ValoresAgregados")
-                        .HasForeignKey("PropriedadeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("RuralAddress.Core.Entities.SystemParameter", "ValorAgregado")
-                        .WithMany()
-                        .HasForeignKey("ValorAgregadoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Propriedade");
-
-                    b.Navigation("ValorAgregado");
-                });
-
             modelBuilder.Entity("RuralAddress.Core.Entities.Veiculo", b =>
                 {
                     b.HasOne("RuralAddress.Core.Entities.Propriedade", "Propriedade")
@@ -806,10 +663,6 @@ namespace RuralAddress.Infrastructure.Migrations
                     b.Navigation("Cultivos");
 
                     b.Navigation("Pessoas");
-
-                    b.Navigation("TiposTrabalho");
-
-                    b.Navigation("ValoresAgregados");
 
                     b.Navigation("Veiculos");
                 });

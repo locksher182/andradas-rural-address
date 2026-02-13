@@ -1,6 +1,7 @@
 <Solution>
   <Project Path="RuralAddress.Core/RuralAddress.Core.csproj" />
   <Project Path="RuralAddress.Infrastructure/RuralAddress.Infrastructure.csproj" />
+  <Project Path="RuralAddress.Tests/RuralAddress.Tests.csproj" />
   <Project Path="RuralAddress.Web/RuralAddress.Web.csproj" />
   <Project Path="RuralAddress.Mobile/RuralAddress.Mobile.csproj" />
 </Solution>

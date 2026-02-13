@@ -27,8 +27,7 @@ window.dynamicMap = {
     createCustomIcon: function (color) {
         const svg = `
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="30" height="45">
-                <path fill="${color}" stroke="#FFFFFF" stroke-width="2" d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24c0-6.63-5.37-12-12-12z"/>
-                <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+                <path fill="${color}" d="M12 0C5.37 0 0 5.37 0 12c0 9 12 24 12 24s12-15 12-24c0-6.63-5.37-12-12-12z"/>
             </svg>
         `;
 
@@ -66,12 +65,14 @@ window.dynamicMap = {
                 var color = this.getSectorColor(p.setor);
                 var icon = this.createCustomIcon(color);
 
+                var link = `/propriedades/editar/${p.id}`;
                 var marker = L.marker([p.latitude, p.longitude], { icon: icon })
                     .bindPopup(`
                         <div style="font-family: 'Inter', sans-serif; text-align: center;">
                             <strong style="color: ${color}; font-size: 1.1em;">${p.nome}</strong><br>
                             <span style="font-weight: 600; color: #555;">Setor ${p.setor}</span><br>
-                            <span style="color: #777; font-size: 0.9em;">(CCIR: ${p.ccir || '-'})</span>
+                            <span style="color: #777; font-size: 0.9em;">${p.primeiraPessoa || 'Sem proprietário'}</span><br>
+                            <a href="${link}" style="display: inline-block; margin-top: 8px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 0.9em; border: 1px solid #007bff; padding: 2px 8px; border-radius: 4px;">Ver Cadastro</a>
                         </div>
                     `)
                     .addTo(this.map);

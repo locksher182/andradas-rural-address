@@ -19,19 +19,24 @@ public class Veiculo : IValidatableObject
     [StringLength(50)]
     public string? TipoOutro { get; set; } // Usado se Tipo.Name == "Outro"
 
+    [Required(ErrorMessage = "A Marca é obrigatória.")]
     [StringLength(50)]
     public string Marca { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "O Modelo é obrigatório.")]
     [StringLength(50)]
     public string Modelo { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "A Cor é obrigatória.")]
     [StringLength(20)]
     public string Cor { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "A placa é obrigatória.")]
     [StringLength(10)]
     [RuralAddress.Core.Validation.PlacaValidation]
     public string Placa { get; set; } = string.Empty;
 
+    [Required(ErrorMessage = "A descrição é obrigatória.")]
     [StringLength(100)]
     public string Descricao { get; set; } = string.Empty;
 

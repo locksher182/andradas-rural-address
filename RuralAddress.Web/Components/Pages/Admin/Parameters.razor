@@ -17,6 +17,8 @@
         <select class="form-select" @onchange="OnGroupChanged">
             <option value="VehicleType">Tipos de Veículo</option>
             <option value="CropType">Tipos de Cultivo</option>
+            <option value="ValueAddedProduction">Produção de Valor Agregado</option>
+            <option value="WorkforceType">Tipos de Mão de Obra</option>
         </select>
     </div>
     <div class="col-md-8 text-end align-self-end">
@@ -45,8 +47,10 @@ else
                     <td>@param.Name</td>
                     <td>@(param.IsActive ? "Sim" : "Não")</td>
                     <td>
-                        <button class="btn btn-primary btn-sm" @onclick="() => EditarParametro(param)">Editar</button>
-                        <button class="btn btn-danger btn-sm" @onclick="() => DeletarParametro(param.Id)">Excluir</button>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary btn-sm d-flex align-items-center justify-content-center" style="width: 90px; height: 32px;" @onclick="() => EditarParametro(param)">Editar</button>
+                            <button class="btn btn-danger btn-sm d-flex align-items-center justify-content-center" style="width: 90px; height: 32px;" @onclick="() => DeletarParametro(param.Id)">Excluir</button>
+                        </div>
                     </td>
                 </tr>
             }

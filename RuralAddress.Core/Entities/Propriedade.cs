@@ -9,6 +9,7 @@ public class Propriedade
     public int Id { get; set; }
 
     [Required(ErrorMessage = "O CEP Rural é obrigatório.")]
+    [MinLength(8, ErrorMessage = "O CEP Rural deve ter 8 caracteres.")]
     [StringLength(8, ErrorMessage = "O CEP Rural deve ter 8 caracteres.")]
     public string CepRural { get; set; } = string.Empty; // A00-0000
 
@@ -24,6 +25,8 @@ public class Propriedade
 
     [StringLength(255)]
     public string Complemento { get; set; } = string.Empty;
+
+    public double? AreaTotal { get; set; }
 
     [Column(TypeName = "decimal(18,8)")]
     public decimal? Latitude { get; set; }
@@ -50,6 +53,8 @@ public class Propriedade
 
     // Relacionamentos
     public List<PropriedadeCultivo> Cultivos { get; set; } = new();
+    public List<PropriedadeValorAgregado> ValoresAgregados { get; set; } = new();
+    public List<PropriedadeTipoTrabalho> TiposTrabalho { get; set; } = new();
     public List<Pessoa> Pessoas { get; set; } = new();
     public List<Veiculo> Veiculos { get; set; } = new();
 }

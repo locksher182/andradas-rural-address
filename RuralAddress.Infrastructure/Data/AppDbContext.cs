@@ -26,6 +26,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Veiculo> Veiculos { get; set; }
     public DbSet<SystemParameter> SystemParameters { get; set; }
     public DbSet<PropriedadeCultivo> PropriedadeCultivos { get; set; }
+    public DbSet<PropriedadeValorAgregado> PropriedadeValoresAgregados { get; set; }
+    public DbSet<PropriedadeTipoTrabalho> PropriedadeTiposTrabalho { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<PanicAlert> PanicAlerts { get; set; }
     public DbSet<PanicChatMessage> PanicChatMessages { get; set; }
@@ -56,6 +58,34 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(p => p.Cultivos)
             .HasForeignKey(pc => pc.PropriedadeId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PropriedadeValorAgregado>()
+            .HasOne(pva => pva.Propriedade)
+            .WithMany(p => p.ValoresAgregados)
+            .HasForeignKey(pva => pva.PropriedadeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PropriedadeTipoTrabalho>()
+            .HasOne(ptt => ptt.Propriedade)
+            .WithMany(p => p.TiposTrabalho)
+            .HasForeignKey(ptt => ptt.PropriedadeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Seed SystemParameters for ValueAddedProduction
+        modelBuilder.Entity<SystemParameter>().HasData(
+            new SystemParameter { Id = 100, Group = "ValueAddedProduction", Name = "CAFÉ TORRADO" },
+            new SystemParameter { Id = 101, Group = "ValueAddedProduction", Name = "PROCESSAMENTO DE PRODUTOS" },
+            new SystemParameter { Id = 102, Group = "ValueAddedProduction", Name = "PRODUÇÃO DE QUEIJOS E/OU DERIVADOS" },
+            new SystemParameter { Id = 103, Group = "ValueAddedProduction", Name = "CERTIFICAÇÕES E SELOS DE QUALIDADE" }
+        );
+
+        // Seed SystemParameters for WorkforceType
+        modelBuilder.Entity<SystemParameter>().HasData(
+            new SystemParameter { Id = 200, Group = "WorkforceType", Name = "FAMÍLIA" },
+            new SystemParameter { Id = 201, Group = "WorkforceType", Name = "MEEIROS/ARRENDATÁRIOS" },
+            new SystemParameter { Id = 202, Group = "WorkforceType", Name = "FUNCIONÁRIOS FIXOS" },
+            new SystemParameter { Id = 203, Group = "WorkforceType", Name = "FUNCIONÁRIOS EVENTUALMENTE" }
+        );
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

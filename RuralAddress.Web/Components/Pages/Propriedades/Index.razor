@@ -83,13 +83,13 @@ else
                     <td>@item.Setor</td>
                     <td>@item.Bairro</td>
                     <td>
-                        <div class="d-flex gap-1">
-                            <a href="propriedades/editar/@item.Id" class="btn btn-secondary btn-sm" title="Detalhes">
-                                <i class="bi bi-eye"></i> Detalhes
+                        <div class="d-flex gap-1 align-items-center">
+                            <a href="propriedades/editar/@item.Id" class="btn btn-secondary btn-sm d-flex align-items-center justify-content-center" style="height: 32px;" title="Detalhes">
+                                <i class="bi bi-eye me-1"></i> Detalhes
                             </a>
                             <AuthorizeView Roles="Admin,Gerente">
-                                <button class="btn btn-danger btn-sm" @onclick="async () => await DeletePropriedade(item.Id)" title="Excluir">
-                                    <i class="bi bi-trash"></i> Excluir
+                                <button class="btn btn-danger btn-sm d-flex align-items-center justify-content-center" style="height: 32px;" @onclick="async () => await DeletePropriedade(item.Id)" title="Excluir">
+                                    <i class="bi bi-trash me-1"></i> Excluir
                                 </button>
                             </AuthorizeView>
                             <a href="@GetWhatsappLink(item)" target="_blank" class="btn btn-whatsapp btn-sm btn-icon-square" title="Enviar via WhatsApp">

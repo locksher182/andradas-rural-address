@@ -18,12 +18,19 @@ public class Pessoa
 
     public DateTime? Nascimento { get; set; }
 
+    [Required(ErrorMessage = "O CPF é obrigatório.")]
     [StringLength(14, ErrorMessage = "O CPF deve ter no máximo 14 caracteres.")]
     [RuralAddress.Core.Validation.CpfValidation(ErrorMessage = "CPF inválido.")]
     public string Cpf { get; set; } = string.Empty;
 
     [StringLength(20, ErrorMessage = "O RG deve ter no máximo 20 caracteres.")]
     public string Rg { get; set; } = string.Empty;
+
+    [StringLength(20, ErrorMessage = "O Telefone deve ter no máximo 20 caracteres.")]
+    public string? Telefone { get; set; }
+
+    [StringLength(255)]
+    public string? TrabalhoOutro { get; set; }
 
     public bool TemBotaoPanico { get; set; } = false;
 }

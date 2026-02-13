@@ -21,6 +21,10 @@ public class PropriedadeService : IPropriedadeService
             .Include(p => p.Veiculos)
             .Include(p => p.Cultivos)
                 .ThenInclude(pc => pc.Cultivo)
+            .Include(p => p.ValoresAgregados)
+                .ThenInclude(va => va.ValorAgregado)
+            .Include(p => p.TiposTrabalho)
+                .ThenInclude(tt => tt.TipoTrabalho)
             .OrderBy(p => p.CepRural)
             .ToListAsync();
     }
@@ -36,6 +40,10 @@ public class PropriedadeService : IPropriedadeService
             .Include(p => p.Veiculos)
             .Include(p => p.Cultivos)
                 .ThenInclude(pc => pc.Cultivo)
+            .Include(p => p.ValoresAgregados)
+                .ThenInclude(va => va.ValorAgregado)
+            .Include(p => p.TiposTrabalho)
+                .ThenInclude(tt => tt.TipoTrabalho)
             .Where(p => p.NomePropriedade.ToLower().Contains(term) ||
                         p.CepRural.ToLower().Contains(term) ||
                         p.Bairro.ToLower().Contains(term) ||
@@ -141,6 +149,10 @@ public class PropriedadeService : IPropriedadeService
             .Include(p => p.Veiculos)
             .Include(p => p.Cultivos)
                 .ThenInclude(pc => pc.Cultivo)
+            .Include(p => p.ValoresAgregados)
+                .ThenInclude(va => va.ValorAgregado)
+            .Include(p => p.TiposTrabalho)
+                .ThenInclude(tt => tt.TipoTrabalho)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
